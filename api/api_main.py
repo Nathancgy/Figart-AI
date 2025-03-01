@@ -14,6 +14,11 @@ import jwt
 import os
 import os.path
 
+try:
+    os.mkdir("uploads")
+except:
+    pass
+
 app = FastAPI()
 
 # Token blacklist set to store invalidated tokens
