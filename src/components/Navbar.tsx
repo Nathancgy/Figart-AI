@@ -33,18 +33,24 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop menu */}
-        <div className="hidden md:flex space-x-8">
-          <Link href="/" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105">
+        <div className="hidden md:flex items-center space-x-8">
+          <Link href="/" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105 py-1.5">
             Home
           </Link>
-          <Link href="/tutorial" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105">
+          <Link href="/tutorial" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105 py-1.5">
             Tutorials
           </Link>
-          <Link href="/ai" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105">
+          <Link href="/ai" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105 py-1.5">
             AI Analysis
           </Link>
-          <Link href="/community" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105">
+          <Link href="/community" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105 py-1.5">
             Community
+          </Link>
+          <Link 
+            href="/login" 
+            className="text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 rounded-lg transition-all duration-300 transform hover:scale-105 inline-flex items-center"
+          >
+            Login
           </Link>
         </div>
 
@@ -95,6 +101,13 @@ export default function Navbar() {
               onClick={() => setIsMenuOpen(false)}
             >
               Community
+            </Link>
+            <Link 
+              href="/login" 
+              className="text-white bg-indigo-600 hover:bg-indigo-700 py-1.5 rounded-lg transition-colors text-center mx-4"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Login
             </Link>
           </div>
         </div>
