@@ -6,5 +6,5 @@ __pycache__/
 .pytest_cache/
 
 *.db
-db.sqlite3
+api/db.sqlite3
 api/uploads/
