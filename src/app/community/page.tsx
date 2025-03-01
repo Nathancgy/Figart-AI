@@ -1,63 +1,39 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { apiRequest } from '@/utils/auth';
+
+interface Post {
+  id: number;
+  photo_id: number;
+  user_id: string;
+  created_at: string;
+  thumbs_up: number;
+}
 
 export default function CommunityPage() {
-  // Sample community photos
-  const communityPhotos = [
-    {
-      id: 1,
-      title: 'Mountain Sunrise',
-      imageUrl: 'https://images.unsplash.com/photo-1544198365-f5d60b6d8190',
-      userName: 'John Doe',
-      userImage: 'https://randomuser.me/api/portraits/men/32.jpg',
-      likes: 42,
-      comments: 8,
-    },
-    {
-      id: 2,
-      title: 'Ocean View',
-      imageUrl: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0',
-      userName: 'Jane Smith',
-      userImage: 'https://randomuser.me/api/portraits/women/44.jpg',
-      likes: 29,
-      comments: 5,
-    },
-    {
-      id: 3,
-      title: 'Urban Architecture',
-      imageUrl: 'https://images.unsplash.com/photo-1534893502077-f4b931a2bb16',
-      userName: 'Alex Johnson',
-      userImage: 'https://randomuser.me/api/portraits/men/29.jpg',
-      likes: 36,
-      comments: 3,
-    },
-    {
-      id: 4,
-      title: 'Forest Path',
-      imageUrl: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d',
-      userName: 'Maria Garcia',
-      userImage: 'https://randomuser.me/api/portraits/women/28.jpg',
-      likes: 51,
-      comments: 12,
-    },
-    {
-      id: 5,
-      title: 'Desert Sunset',
-      imageUrl: 'https://images.unsplash.com/photo-1586531387048-81c4818b49f5',
-      userName: 'Chris Wilson',
-      userImage: 'https://randomuser.me/api/portraits/men/67.jpg',
-      likes: 38,
-      comments: 7,
-    },
-    {
-      id: 6,
-      title: 'City Lights',
-      imageUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401',
-      userName: 'Sarah Brown',
-      userImage: 'https://randomuser.me/api/portraits/women/10.jpg',
-      likes: 63,
-      comments: 9,
-    },
-  ];
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setLoading(true);
+        // Get recent posts
+        const response = await apiRequest('/posts/recent/');
+        setPosts(response.posts);
+      } catch (err) {
+        setError('Failed to load posts');
+        console.error('Error fetching posts:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -77,79 +53,54 @@ export default function CommunityPage() {
               <h2 className="text-2xl font-bold text-gray-900">Recent Photos</h2>
               <p className="text-gray-500">Explore the latest uploads from our community</p>
             </div>
-            
-            <div className="flex space-x-4">
-              <button className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-md font-medium hover:bg-indigo-200 transition">
-                Popular
-              </button>
-              <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md font-medium hover:bg-gray-200 transition">
-                Recent
-              </button>
-              <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md font-medium hover:bg-gray-200 transition">
-                Following
-              </button>
+          </div>
+          
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent"></div>
+              <p className="mt-2 text-gray-500">Loading posts...</p>
             </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {communityPhotos.map((photo) => (
-              <div key={photo.id} className="border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
-                <div className="relative pb-[75%] bg-gray-100">
-                  <img
-                    src={photo.imageUrl}
-                    alt={photo.title}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                </div>
-                <div className="p-4">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-lg">{photo.title}</h3>
-                    <div className="flex items-center text-gray-500">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-1 text-red-500">
-                        <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-                      </svg>
-                      <span>{photo.likes}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center mt-4">
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-red-500">{error}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {posts.map((post) => (
+                <div key={post.id} className="border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
+                  <div className="relative pb-[75%] bg-gray-100">
                     <img
-                      src={photo.userImage}
-                      alt={photo.userName}
-                      className="w-8 h-8 rounded-full mr-2"
+                      src={`http://localhost:8000/photos/${post.photo_id}/`}
+                      alt={`Post ${post.id}`}
+                      className="absolute inset-0 w-full h-full object-cover"
                     />
-                    <span className="text-sm font-medium text-gray-700">{photo.userName}</span>
                   </div>
-                  <div className="mt-4 flex justify-between">
-                    <div className="flex items-center text-gray-500 text-sm">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-1">
-                        <path fillRule="evenodd" d="M4.804 21.644A6.707 6.707 0 006 21.75a6.721 6.721 0 003.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.587 2.674 6.192.232.226.277.428.254.543a3.73 3.73 0 01-.814 1.686.75.75 0 00.44 1.223zM8.25 10.875a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25zM10.875 12a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875-1.125a1.125 1.125 0 100 2.25 1.125 1.125 0 000-2.25z" clipRule="evenodd" />
-                      </svg>
-                      <span>{photo.comments} comments</span>
+                  <div className="p-4">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-bold text-lg">Post #{post.id}</h3>
+                      <div className="flex items-center text-gray-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-1 text-red-500">
+                          <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+                        </svg>
+                        <span>{post.thumbs_up}</span>
+                      </div>
                     </div>
-                    <button className="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
-                      View Details
-                    </button>
+                    <div className="flex items-center mt-4">
+                      <span className="text-sm font-medium text-gray-700">By: {post.user_id}</span>
+                    </div>
+                    <div className="mt-4 flex justify-between">
+                      <div className="text-sm text-gray-500">
+                        {new Date(post.created_at).toLocaleDateString()}
+                      </div>
+                      <Link href={`/posts/${post.id}`} className="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                        View Details
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-          
-          <div className="mt-10 text-center">
-            <button className="px-6 py-3 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700 transition duration-300">
-              Load More Photos
-            </button>
-          </div>
-        </div>
-        
-        <div className="bg-indigo-50 rounded-xl shadow-md p-8 text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Share Your Photography</h2>
-          <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-            Join our community and showcase your best photos. Get feedback, give likes, and connect with other photographers.
-          </p>
-          <Link href="/tutorial" className="px-6 py-3 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700 transition duration-300">
-            Try Our Tutorials First
-          </Link>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

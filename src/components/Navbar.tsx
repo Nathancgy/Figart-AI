@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { username, logout } = useAuth();
 
   // Add scroll effect
   useEffect(() => {
@@ -23,6 +25,36 @@ export default function Navbar() {
     };
   }, [scrolled]);
 
+  const handleLogout = () => {
+    logout();
+    setIsMenuOpen(false);
+  };
+
+  const AuthSection = () => {
+    if (username) {
+      return (
+        <div className="flex items-center space-x-4">
+          <span className="text-white">Hello, {username}</span>
+          <button
+            onClick={handleLogout}
+            className="text-white hover:text-indigo-300 transition-all duration-300"
+          >
+            Logout
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <Link
+        href="/login"
+        className="text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 rounded-lg transition-all duration-300 transform hover:scale-105"
+      >
+        Login
+      </Link>
+    );
+  };
+
   return (
     <nav className={`fixed w-full top-0 z-20 transition-all duration-300 ${
       scrolled ? 'bg-black/40 backdrop-blur-md' : 'bg-transparent'
@@ -34,24 +66,19 @@ export default function Navbar() {
 
         {/* Desktop menu */}
         <div className="hidden md:flex items-center space-x-8">
-          <Link href="/" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105 py-1.5">
+          <Link href="/" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105">
             Home
           </Link>
-          <Link href="/tutorial" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105 py-1.5">
+          <Link href="/tutorial" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105">
             Tutorials
           </Link>
-          <Link href="/ai" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105 py-1.5">
+          <Link href="/ai" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105">
             AI Analysis
           </Link>
-          <Link href="/community" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105 py-1.5">
+          <Link href="/community" className="text-white hover:text-indigo-300 transition-all duration-300 transform hover:scale-105">
             Community
           </Link>
-          <Link 
-            href="/login" 
-            className="text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 rounded-lg transition-all duration-300 transform hover:scale-105 inline-flex items-center"
-          >
-            Login
-          </Link>
+          <AuthSection />
         </div>
 
         {/* Mobile menu button */}
@@ -102,13 +129,9 @@ export default function Navbar() {
             >
               Community
             </Link>
-            <Link 
-              href="/login" 
-              className="text-white bg-indigo-600 hover:bg-indigo-700 py-1.5 rounded-lg transition-colors text-center mx-4"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Login
-            </Link>
+            <div className="flex justify-center">
+              <AuthSection />
+            </div>
           </div>
         </div>
       )}

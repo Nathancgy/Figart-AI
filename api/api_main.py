@@ -1,15 +1,29 @@
 import uuid
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from backend import (
     session, User, add_user, 
     login, get_post_or_404, Photo, Post, Comment,
-    save_photo, create_post
+    save_photo, create_post, utcnow
 )
+from settings import *
 from datetime import datetime, timedelta
 import jwt
 
 app = FastAPI()
+
+# Token blacklist set to store invalidated tokens
+token_blacklist = set()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=HOSTS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 from fastapi import File, UploadFile
 from fastapi import Depends, Security
@@ -18,6 +32,9 @@ from fastapi.security import OAuth2PasswordBearer
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
+    # Check if token is blacklisted
+    if token in token_blacklist:
+        raise HTTPException(status_code=401, detail="Token has been invalidated")
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         username: str = payload.get("sub")
@@ -36,7 +53,11 @@ def create_user(user: UserCreate):
     if session.query(User).filter_by(username=user.username).first():
         raise HTTPException(status_code=409, detail="Username already registered")
     add_user(user.username, user.password)
-    return {"message": "User created successfully"}
+    token = jwt.encode({
+        'sub': user.username,
+        'exp': utcnow() + timedelta(minutes=30)
+        }, SECRET_KEY, algorithm='HS256')
+    return {"message": "User created successfully", "token": token}
 
 class UserLogin(BaseModel):
     username: str
@@ -50,7 +71,7 @@ def login_user(user: UserLogin):
         # Generate a token
         token = jwt.encode({
             'sub': user.username,
-            'exp': datetime.utcnow() + timedelta(hours=1)
+            'exp': utcnow() + timedelta(hours=1)
         }, SECRET_KEY, algorithm='HS256')
         return {"message": "Login successful", "token": token}
     raise HTTPException(status_code=401, detail="Invalid username or password")
@@ -154,3 +175,16 @@ async def delete_comment(post_id: int, comment_id: int, current_user: str = Depe
     session.delete(comment)
     session.commit()
     return {"message": "Comment deleted successfully"}
+
+@app.post("/users/logout/")
+async def logout_user(current_user: str = Depends(get_current_user), token: str = Depends(oauth2_scheme)):
+    # Add the token to the blacklist
+    token_blacklist.add(token)
+    return {"message": "Successfully logged out"}
+
+@app.get("/photos/{photo_id}/")
+async def get_photo(photo_id: int):
+    photo = session.query(Photo).filter_by(id=photo_id).first()
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo doesn't exist")
+    return FileResponse(f"uploads/{photo.internal_filename}")

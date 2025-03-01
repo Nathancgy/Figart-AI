@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -26,10 +27,12 @@ export default function RootLayout({
           <div className="absolute bottom-1/4 left-1/3 w-80 h-80 bg-indigo-500 rounded-full mix-blend-screen filter blur-[80px] opacity-20 animate-float-slow"></div>
         </div>
         
-        <Navbar />
-        <main className="pt-16 relative z-10">
-          {children}
-        </main>
+        <AuthProvider>
+          <Navbar />
+          <main className="pt-16 relative z-10">
+            {children}
+          </main>
+        </AuthProvider>
         
         {/* Visual journey path */}
         <div className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-indigo-400 to-transparent opacity-50 top-20 hidden lg:block"></div>

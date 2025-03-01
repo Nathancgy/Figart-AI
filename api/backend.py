@@ -40,7 +40,7 @@ class Post(Base):
     id = Column(Integer, primary_key=True)
     photo_id = Column(Integer, ForeignKey('photos.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     thumbs_up = Column(Integer, default=0)
 
     def __repr__(self):

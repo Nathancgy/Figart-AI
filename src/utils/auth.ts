@@ -16,21 +16,27 @@ export const removeAuthToken = () => {
 };
 
 export const login = async (username: string, password: string) => {
-  const response = await fetch(`${API_URL}/login`, {
+  const response = await fetch(`${API_URL}/users/login/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
+    credentials: 'include',
+    mode: 'cors',
     body: JSON.stringify({ username, password }),
   });
 
+  const data = await response.json().catch(() => null);
+
   if (!response.ok) {
-    throw new Error('Login failed');
+    if (response.status === 401) {
+      throw new Error('Invalid username or password');
+    }
+    throw new Error(data?.detail || 'Login failed');
   }
 
-  const data = await response.json();
-  
-  if (!data.token) {
+  if (!data?.token) {
     throw new Error('No token received');
   }
 
@@ -39,21 +45,27 @@ export const login = async (username: string, password: string) => {
 };
 
 export const signup = async (username: string, password: string) => {
-  const response = await fetch(`${API_URL}/signup`, {
+  const response = await fetch(`${API_URL}/users/register/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
+    credentials: 'include',
+    mode: 'cors',
     body: JSON.stringify({ username, password }),
   });
 
+  const data = await response.json().catch(() => null);
+
   if (!response.ok) {
-    throw new Error('Signup failed');
+    if (response.status === 409) {
+      throw new Error('Username already exists');
+    }
+    throw new Error(data?.detail || 'Registration failed');
   }
 
-  const data = await response.json();
-  
-  if (!data.token) {
+  if (!data?.token) {
     throw new Error('No token received');
   }
 
@@ -67,6 +79,7 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
   
   const headers = {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
     ...(token && { Authorization: `Bearer ${token}` }),
     ...options.headers,
   };
@@ -74,11 +87,15 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers,
+    credentials: 'include',
+    mode: 'cors',
   });
 
+  const data = await response.json().catch(() => null);
+
   if (!response.ok) {
-    throw new Error('API request failed');
+    throw new Error(data?.detail || 'API request failed');
   }
 
-  return response.json();
+  return data;
 }; 
