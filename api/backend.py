@@ -59,6 +59,8 @@ class Comment(Base):
         return f"<Comment(id={self.id}, post_id={self.post_id}, user_id={self.user_id}, content={self.content}, created_at={self.created_at})>"
 
 # Database setup
+if RUN_TESTS:
+    DB = "sqlite:///test.db"
 engine = create_engine(DB)
 Base.metadata.create_all(engine)
 
