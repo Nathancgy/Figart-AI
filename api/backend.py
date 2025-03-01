@@ -27,18 +27,11 @@ class User(Base):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-class Photo(Base):
-    __tablename__ = 'photos'
-
-    id = Column(Integer, primary_key=True)
-    internal_filename = Column(String, nullable=False)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-
 class Post(Base):
     __tablename__ = 'posts'
 
     id = Column(Integer, primary_key=True)
-    photo_id = Column(Integer, ForeignKey('photos.id'), nullable=False)
+    photo_uuid = Column(String, nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     created_at = Column(DateTime, default=utcnow)
     thumbs_up = Column(Integer, default=0)

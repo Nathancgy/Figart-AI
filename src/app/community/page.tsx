@@ -1,39 +1,90 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { apiRequest } from '@/utils/auth';
+import { apiRequest, getAuthToken } from '@/utils/auth';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Post {
   id: number;
-  photo_id: number;
+  photo_uuid: string;
   user_id: string;
   created_at: string;
   thumbs_up: number;
 }
 
 export default function CommunityPage() {
+  const { username } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        setLoading(true);
-        // Get recent posts
-        const response = await apiRequest('/posts/recent/');
-        setPosts(response.posts);
-      } catch (err) {
-        setError('Failed to load posts');
-        console.error('Error fetching posts:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchPosts();
   }, []);
+
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      // Get recent posts
+      const response = await apiRequest('/posts/recent/');
+      setPosts(response.posts);
+    } catch (err) {
+      setError('Failed to load posts');
+      console.error('Error fetching posts:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploading(true);
+      setError(null);
+      
+      // Get the auth token
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+      
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Upload the photo and create post in one step
+      const response = await fetch('http://localhost:8000/posts/create/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.detail || 'Failed to create post');
+      }
+
+      // Refresh the posts list
+      await fetchPosts();
+      
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (err) {
+      console.error('Error uploading:', err);
+      setError(err instanceof Error ? err.message : 'Failed to upload photo');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -53,6 +104,25 @@ export default function CommunityPage() {
               <h2 className="text-2xl font-bold text-gray-900">Recent Photos</h2>
               <p className="text-gray-500">Explore the latest uploads from our community</p>
             </div>
+            {username && (
+              <div className="relative">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleUpload}
+                  accept="image/*"
+                  className="hidden"
+                  aria-label="Upload photo"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-indigo-400"
+                >
+                  {uploading ? 'Uploading...' : 'Post a Picture'}
+                </button>
+              </div>
+            )}
           </div>
           
           {loading ? (
@@ -70,7 +140,7 @@ export default function CommunityPage() {
                 <div key={post.id} className="border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
                   <div className="relative pb-[75%] bg-gray-100">
                     <img
-                      src={`http://localhost:8000/photos/${post.photo_id}/`}
+                      src={`http://localhost:8000/photos/${post.photo_uuid}`}
                       alt={`Post ${post.id}`}
                       className="absolute inset-0 w-full h-full object-cover"
                     />

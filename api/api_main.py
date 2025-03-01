@@ -5,12 +5,14 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from backend import (
     session, User, add_user, 
-    login, get_post_or_404, Photo, Post, Comment,
-    save_photo, create_post, utcnow
+    login, get_post_or_404, Post, Comment,
+    utcnow
 )
 from settings import *
-from datetime import datetime, timedelta
+from datetime import timedelta
 import jwt
+import os
+import os.path
 
 app = FastAPI()
 
@@ -26,7 +28,7 @@ app.add_middleware(
 )
 
 from fastapi import File, UploadFile
-from fastapi import Depends, Security
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -76,28 +78,19 @@ def login_user(user: UserLogin):
         return {"message": "Login successful", "token": token}
     raise HTTPException(status_code=401, detail="Invalid username or password")
 
-@app.post("/upload/")
-async def upload_photo(file: UploadFile = File(...), current_user: str = Depends(get_current_user)):
+@app.post("/posts/create/")
+async def create_post(file: UploadFile = File(...), current_user: str = Depends(get_current_user)):
     if not file.content_type.startswith('image/'):
         raise HTTPException(status_code=400, detail="File type not supported")
     
-    filename = uuid.uuid4().hex + file.filename.split(".")[-1]
-
+    filename = uuid.uuid4().hex + "." + file.filename.split(".")[-1]
     file_location = f"uploads/{filename}"
     with open(file_location, "wb") as buffer:
         buffer.write(await file.read())
-
-    photo_id = save_photo(filename, current_user)
-    
-    return {"message": "Photo uploaded successfully", "photo_id": photo_id}
-
-@app.post("/posts/create/")
-async def create_post(photo_id: int, current_user: str = Depends(get_current_user)):
-    photo = session.query(Photo).filter_by(id=photo_id, user_id=current_user).first()
-    if not photo:
-        raise HTTPException(status_code=403, detail="You do not have permission to create a post for this photo")
-    post_id = create_post(photo_id, current_user)
-    return {"message": "Post created successfully", "post_id": post_id}
+    p = Post(photo_uuid=filename, user_id=current_user)
+    session.add(p)
+    session.commit()
+    return {"message": "Post created successfully", "post_id": p.id}
 
 @app.get("/posts/recent/")
 async def get_recent_posts():
@@ -182,9 +175,15 @@ async def logout_user(current_user: str = Depends(get_current_user), token: str 
     token_blacklist.add(token)
     return {"message": "Successfully logged out"}
 
-@app.get("/photos/{photo_id}/")
-async def get_photo(photo_id: int):
-    photo = session.query(Photo).filter_by(id=photo_id).first()
-    if not photo:
+def inside(photoname):
+    abspath = os.path.abspath(os.path.join("./uploads/", photoname))
+    return os.path.commonprefix([abspath, os.path.abspath("./uploads/")]) == os.path.abspath("./uploads/")
+
+@app.get("/photos/{photoname}")
+async def get_photo(photoname: str):
+    if not inside(photoname):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    if not os.path.exists(f"uploads/{photoname}"):
         raise HTTPException(status_code=404, detail="Photo doesn't exist")
-    return FileResponse(f"uploads/{photo.internal_filename}")
+
+    return FileResponse(f"uploads/{photoname}")
