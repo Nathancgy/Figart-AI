@@ -4,6 +4,8 @@ node_modules
 __pycache__/
 
 .pytest_cache/
+.next/*
+.next/
 
 *.db
 api/db.sqlite3
