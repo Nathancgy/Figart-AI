@@ -129,10 +129,14 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
   const fullUrl = `${apiUrl}${endpoint}`;
   // console.log('%c Full request URL:', 'background: #0066ff; color: white; font-size: 14px; padding: 3px;', fullUrl);
 
+  // Determine if this is a cross-origin request
+  const isCrossOrigin = new URL(fullUrl).origin !== window.location.origin;
+  
   const response = await fetch(fullUrl, {
     ...options,
     headers,
-    credentials: 'include',
+    // Use 'include' for cross-origin requests, otherwise 'same-origin'
+    credentials: isCrossOrigin ? 'include' : 'same-origin',
     mode: 'cors',
   });
 

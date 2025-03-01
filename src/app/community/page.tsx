@@ -17,6 +17,11 @@ interface Post {
   thumbs_up: number;
 }
 
+interface PostIdObject {
+  id: number;
+  created_at: string;
+}
+
 export default function CommunityPage() {
   // console.log('%c Community page rendered', 'background: #00ff00; color: black; font-size: 16px; padding: 5px;');
   
@@ -34,6 +39,12 @@ export default function CommunityPage() {
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [totalPages, setTotalPages] = useState(0);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [newPostsCount, setNewPostsCount] = useState(0);
+  const autoRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLikesRefreshRef = useRef<Date>(new Date());
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -59,8 +70,119 @@ export default function CommunityPage() {
     }
   }, [error]);
 
+  // Set up auto-refresh interval
+  useEffect(() => {
+    // Clear any existing interval first
+    if (autoRefreshIntervalRef.current) {
+      clearInterval(autoRefreshIntervalRef.current);
+      autoRefreshIntervalRef.current = null;
+    }
+    
+    if (autoRefreshEnabled && sortMethod === 'recent') {
+      console.log('Setting up auto-refresh interval');
+      
+      // Define the check function inside the effect to avoid dependency issues
+      const checkForNewPostsInEffect = async () => {
+        if (isRefreshing) return;
+        
+        try {
+          console.log('Auto-refresh checking for new posts');
+          
+          // Use the new endpoint that returns only post IDs
+          const response = await apiRequest(`/posts/new-ids/${lastRefreshTime.toISOString()}/`);
+          
+          if (response && response.post_ids && response.post_ids.length > 0) {
+            console.log(`Found ${response.post_ids.length} new posts in auto-refresh`);
+            setNewPostsCount(response.post_ids.length);
+          }
+          
+          // Also refresh liked posts status every 2 minutes (every 4th check at 30s intervals)
+          const currentTime = new Date();
+          const timeSinceLastLikesRefresh = currentTime.getTime() - lastLikesRefreshRef.current.getTime();
+          if (username && timeSinceLastLikesRefresh > 10000) { // 10 secs
+            console.log('Auto-refreshing liked posts status');
+            await fetchUserLikedPosts();
+            lastLikesRefreshRef.current = currentTime;
+          }
+        } catch (error) {
+          console.error('Error in auto-refresh:', error);
+        }
+      };
+      
+      // Check for new posts every 30 seconds
+      autoRefreshIntervalRef.current = setInterval(checkForNewPostsInEffect, 30000); // 30 seconds
+    }
+
+    return () => {
+      console.log('Cleaning up auto-refresh interval');
+      if (autoRefreshIntervalRef.current) {
+        clearInterval(autoRefreshIntervalRef.current);
+        autoRefreshIntervalRef.current = null;
+      }
+    };
+  }, [autoRefreshEnabled, sortMethod, isRefreshing]);
+
+  // Function to check for new posts without refreshing the entire list
+  const checkForNewPosts = async () => {
+    if (isRefreshing || sortMethod !== 'recent') return;
+
+    try {
+      setIsRefreshing(true);
+      
+      console.log('Checking for new posts since:', lastRefreshTime.toISOString());
+      
+      // Use the new endpoint that returns only post IDs
+      const response = await apiRequest(`/posts/new-ids/${lastRefreshTime.toISOString()}/`);
+      
+      console.log('New posts response:', response);
+      
+      if (response && response.post_ids && response.post_ids.length > 0) {
+        console.log(`Found ${response.post_ids.length} new posts since ${lastRefreshTime.toISOString()}`);
+        setNewPostsCount(response.post_ids.length);
+      }
+    } catch (error) {
+      console.error('Error checking for new posts:', error);
+      // Don't show error to user for background refresh checks
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Function to load new posts and merge them with existing posts
+  const loadNewPosts = async (refreshPage: boolean = false) => {
+    if (newPostsCount === 0) return;
+    
+    try {
+      setIsRefreshing(true);
+      
+      if (refreshPage) {
+        console.log('Refreshing page to show new posts');
+        // Reset the new posts count and update the last refresh time
+        setNewPostsCount(0);
+        setLastRefreshTime(new Date());
+        // Trigger a full page refresh by fetching posts
+        await fetchPosts(true);
+      } else {
+        console.log('Acknowledging new posts without loading them');
+        // Simply reset the new posts count and update the last refresh time
+        // without actually loading any new posts
+        setNewPostsCount(0);
+        setLastRefreshTime(new Date());
+      }
+      
+    } catch (error) {
+      console.error('Error acknowledging new posts:', error);
+      setError('Failed to acknowledge new posts. Please try again.');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // Fetch posts and user's liked posts when component mounts or username changes
   useEffect(() => {
+    // Only run this effect on mount or when sortMethod changes
+    const controller = new AbortController();
+    
     fetchPosts(true);
     
     // Only fetch liked posts if user is logged in
@@ -71,6 +193,10 @@ export default function CommunityPage() {
       setLikedPosts([]);
       localStorage.removeItem('likedPosts');
     }
+    
+    return () => {
+      controller.abort();
+    };
   }, [username, sortMethod]);
 
   const fetchUserLikedPosts = async () => {
@@ -101,6 +227,8 @@ export default function CommunityPage() {
       if (reset) {
         setLoading(true);
         setPage(0);
+        setNewPostsCount(0);
+        setLastRefreshTime(new Date());
       } else {
         setLoadingMore(true);
       }
@@ -116,14 +244,21 @@ export default function CommunityPage() {
       if (reset) {
         setPosts(response.posts);
       } else {
-        setPosts([...posts, ...response.posts]);
+        setPosts(prevPosts => [...prevPosts, ...response.posts]);
       }
       
       setHasMorePosts(response.pagination.page < response.pagination.pages - 1);
       setTotalPages(response.pagination.pages);
       
       if (!reset) {
-        setPage(currentPage + 1);
+        setPage(prevPage => prevPage + 1);
+      }
+      
+      // Also refresh liked posts when fetching posts (but only if user is logged in)
+      if (username) {
+        // Update the lastLikesRefresh reference to avoid unnecessary refreshes
+        lastLikesRefreshRef.current = new Date();
+        await fetchUserLikedPosts();
       }
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -147,6 +282,15 @@ export default function CommunityPage() {
             setPosts(response.posts);
             setHasMorePosts(response.pagination.page < response.pagination.pages - 1);
             setTotalPages(response.pagination.pages);
+            
+            // Also refresh liked posts when changing pages (but only if user is logged in)
+            if (username) {
+              // Update the lastLikesRefresh reference to avoid unnecessary refreshes
+              lastLikesRefreshRef.current = new Date();
+              fetchUserLikedPosts().catch(err => {
+                console.error('Error refreshing liked posts:', err);
+              });
+            }
           })
           .catch(err => {
             setError('Failed to load posts');
@@ -269,6 +413,15 @@ export default function CommunityPage() {
           setPosts(response.posts);
           setHasMorePosts(response.pagination.page < response.pagination.pages - 1);
           setTotalPages(response.pagination.pages);
+          
+          // Also refresh liked posts when changing sort method (but only if user is logged in)
+          if (username) {
+            // Update the lastLikesRefresh reference to avoid unnecessary refreshes
+            lastLikesRefreshRef.current = new Date();
+            fetchUserLikedPosts().catch(err => {
+              console.error('Error refreshing liked posts:', err);
+            });
+          }
         })
         .catch(err => {
           setError('Failed to load posts');
@@ -360,8 +513,11 @@ export default function CommunityPage() {
       
       // Optimistically update UI
       const newLikedPosts = isLiked ? likedPosts.filter(id => id !== postId) : [...likedPosts, postId];
-      setPosts(posts.map(post => 
-        post.id === postId ? { ...post, thumbs_up: isLiked ? Math.max(0, post.thumbs_up - 1) : post.thumbs_up + 1 } : post
+      setPosts(prevPosts => prevPosts.map(post => 
+        post.id === postId ? { 
+          ...post, 
+          thumbs_up: isLiked ? Math.max(0, post.thumbs_up - 1) : post.thumbs_up + 1 
+        } : post
       ));
       setLikedPosts(newLikedPosts);
       
@@ -419,6 +575,38 @@ export default function CommunityPage() {
           </div>
         )}
         
+        {newPostsCount > 0 && (
+          <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-100 border-l-4 border-indigo-500 text-indigo-800 px-4 py-3 rounded shadow-md relative animate-pulse-subtle" role="alert">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center">
+              <div className="flex items-center mb-2 sm:mb-0">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-indigo-600 flex-shrink-0">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                </svg>
+                <span className="block font-medium">
+                  {newPostsCount} new {newPostsCount === 1 ? 'post' : 'posts'} available!
+                </span>
+              </div>
+              <button
+                onClick={() => loadNewPosts(true)}
+                className="sm:ml-4 px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm"
+                disabled={isRefreshing}
+              >
+                {isRefreshing ? 'Refreshing...' : 'Refresh Now'}
+              </button>
+            </div>
+            <button 
+              className="absolute top-0 bottom-0 right-0 px-4 py-3"
+              onClick={() => loadNewPosts(false)}
+              aria-label="Dismiss notification"
+            >
+              <svg className="fill-current h-6 w-6 text-indigo-500 hover:text-indigo-700" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <title>Dismiss</title>
+                <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
+              </svg>
+            </button>
+          </div>
+        )}
+        
         <div className="text-center mb-12">
           <h1 className="text-4xl font-extrabold text-white sm:text-5xl sm:tracking-tight lg:text-6xl">
             Photography Community
@@ -441,6 +629,21 @@ export default function CommunityPage() {
               </p>
             </div>
             <div className="flex items-center gap-4">
+              {sortMethod === 'recent' && (
+                <div className="flex items-center">
+                  <label className="inline-flex items-center cursor-pointer mr-4">
+                    <input 
+                      type="checkbox" 
+                      checked={autoRefreshEnabled}
+                      onChange={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+                      className="sr-only peer"
+                    />
+                    <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    <span className="ms-3 text-sm font-medium text-gray-700">Auto-refresh</span>
+                  </label>
+                </div>
+              )}
+              
               <div className="relative" ref={sortDropdownRef}>
                 <button
                   onClick={() => setShowSortDropdown(!showSortDropdown)}
@@ -544,7 +747,7 @@ export default function CommunityPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                           </svg>
                         )}
-                        <span>{post.thumbs_up}</span>
+                        <span>{Math.max(0, post.thumbs_up)}</span>
                       </button>
                     </div>
                     <div className="mt-4 flex justify-between">

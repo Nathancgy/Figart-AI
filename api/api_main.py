@@ -1,5 +1,5 @@
 import uuid
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -9,10 +9,11 @@ from backend import (
     utcnow
 )
 from settings import *
-from datetime import timedelta
+from datetime import timedelta, datetime
 import jwt
 import os
 import os.path
+from typing import Optional
 
 try:
     os.mkdir("uploads")
@@ -131,12 +132,20 @@ async def get_posts(sort_by: str = "recent", page: int = 0, limit: int = 18):
         user = session.query(User).filter_by(id=post.user_id).first()
         username = user.username if user else "Unknown User"
         
+        # Ensure thumbs_up is never negative
+        thumbs_up = max(0, post.thumbs_up)
+        
+        # If we found a negative value, fix it in the database
+        if post.thumbs_up < 0:
+            post.thumbs_up = 0
+            session.commit()
+        
         formatted_posts.append({
             "id": post.id,
             "photo_uuid": post.photo_uuid,
             "user_id": username,  # Use username instead of user_id
             "created_at": post.created_at.isoformat(),
-            "thumbs_up": post.thumbs_up
+            "thumbs_up": thumbs_up
         })
     
     # Get total count for pagination info
@@ -179,13 +188,21 @@ async def get_post(post_id: int):
     user = session.query(User).filter_by(id=post.user_id).first()
     username = user.username if user else "Unknown User"
     
+    # Ensure thumbs_up is never negative
+    thumbs_up = max(0, post.thumbs_up)
+    
+    # If we found a negative value, fix it in the database
+    if post.thumbs_up < 0:
+        post.thumbs_up = 0
+        session.commit()
+    
     # Format the post data
     formatted_post = {
         "id": post.id,
         "photo_uuid": post.photo_uuid,
         "user_id": username,  # Use username instead of user_id
         "created_at": post.created_at.isoformat(),
-        "thumbs_up": post.thumbs_up
+        "thumbs_up": thumbs_up
     }
     
     return {"post": formatted_post}
@@ -206,12 +223,20 @@ async def get_user_posts(user_id: int, current_user: str = Depends(get_current_u
     # Format posts to include username instead of user_id
     formatted_posts = []
     for post in posts:
+        # Ensure thumbs_up is never negative
+        thumbs_up = max(0, post.thumbs_up)
+        
+        # If we found a negative value, fix it in the database
+        if post.thumbs_up < 0:
+            post.thumbs_up = 0
+            session.commit()
+            
         formatted_posts.append({
             "id": post.id,
             "photo_uuid": post.photo_uuid,
             "user_id": auth_user.username,  # Use username instead of user_id
             "created_at": post.created_at.isoformat(),
-            "thumbs_up": post.thumbs_up
+            "thumbs_up": thumbs_up
         })
     
     return {"posts": formatted_posts}
@@ -243,8 +268,8 @@ async def thumbs_down_post(post_id: int, current_user: str = Depends(get_current
     if post_id not in user.thumbed_posts:
         raise HTTPException(status_code=400, detail="You haven't thumbed up this post")
     
-    # Update the post's thumbs up count
-    post.thumbs_up -= 1
+    # Update the post's thumbs up count, ensuring it never goes below 0
+    post.thumbs_up = max(0, post.thumbs_up - 1)
     
     # Remove the post ID from the user's thumbed posts
     user.thumbed_posts = [p for p in user.thumbed_posts if p != post_id]
@@ -345,4 +370,135 @@ async def get_user_liked_posts(current_user: str = Depends(get_current_user)):
     user = session.query(User).filter_by(username=current_user).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
     return {"liked_posts": user.thumbed_posts}
+
+@app.get("/posts/new/{since}/")
+async def get_new_posts(since: str):
+    """
+    Get posts newer than the specified timestamp
+    
+    Parameters:
+    - since: ISO format timestamp (e.g., '2023-04-01T12:00:00.000Z')
+             If not provided, returns posts from the last 24 hours
+    """
+    try:
+        # Default to 24 hours ago if no timestamp is provided
+        since_datetime = datetime.fromisoformat(since)
+        
+        # If a timestamp is provided, try to parse it
+        if since:
+            try:
+                # Try standard ISO format
+                since_datetime = datetime.fromisoformat(since.replace('Z', '+00:00'))
+            except ValueError:
+                # Just use the default if parsing fails
+                print(f"Failed to parse timestamp: {since}, using default")
+        
+        # Ensure the timestamp is not in the future
+        if since_datetime > utcnow():
+            since_datetime = utcnow()
+        
+        # Query posts newer than the timestamp
+        query = session.query(Post).filter(Post.created_at > since_datetime).order_by(Post.created_at.desc())
+        posts = query.all()
+        
+        # Format posts to include username instead of user_id
+        formatted_posts = []
+        for post in posts:
+            user = session.query(User).filter_by(id=post.user_id).first()
+            username = user.username if user else "Unknown User"
+            
+            # Ensure thumbs_up is never negative
+            thumbs_up = max(0, post.thumbs_up)
+            
+            # If we found a negative value, fix it in the database
+            if post.thumbs_up < 0:
+                post.thumbs_up = 0
+                session.commit()
+            
+            formatted_posts.append({
+                "id": post.id,
+                "photo_uuid": post.photo_uuid,
+                "user_id": username,  # Use username instead of user_id
+                "created_at": post.created_at.isoformat(),
+                "thumbs_up": thumbs_up
+            })
+        
+        return {
+            "posts": formatted_posts,
+            "count": len(formatted_posts),
+            "since": since_datetime.isoformat()
+        }
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Error in get_new_posts: {str(e)}")
+        # Return empty results instead of an error
+        return {
+            "posts": [],
+            "count": 0,
+            "error": str(e)
+        }
+
+@app.get("/posts/new-ids/{since}/")
+async def get_new_post_ids(since: str):
+    """
+    Get only the IDs of posts newer than the specified timestamp
+    
+    Parameters:
+    - since: ISO format timestamp (e.g., '2023-04-01T12:00:00.000Z')
+    """
+    try:
+        # Parse the timestamp
+        since_datetime = datetime.fromisoformat(since.replace('Z', '+00:00'))
+        
+        # Ensure the timestamp is not in the future
+        if since_datetime > utcnow():
+            since_datetime = utcnow()
+        
+        # Query only post IDs and created_at timestamps newer than the given timestamp
+        query = session.query(Post.id, Post.created_at).filter(Post.created_at > since_datetime).order_by(Post.created_at.desc())
+        posts = query.all()
+        
+        # Format the response with just IDs and timestamps
+        post_ids = [{"id": post.id, "created_at": post.created_at.isoformat()} for post in posts]
+        
+        return {
+            "post_ids": post_ids,
+            "count": len(post_ids),
+            "since": since_datetime.isoformat()
+        }
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Error in get_new_post_ids: {str(e)}")
+        # Return empty results instead of an error
+        return {
+            "post_ids": [],
+            "count": 0,
+            "error": str(e)
+        }
+
+@app.post("/admin/fix-negative-thumbs/")
+async def fix_negative_thumbs(current_user: str = Depends(get_current_user)):
+    """
+    Fix any posts with negative thumbs up counts by setting them to 0
+    Only accessible to admin users
+    """
+    # Get the user to check if they're an admin
+    user = session.query(User).filter_by(username=current_user).first()
+    if not user or user.username != "admin":  # Simple admin check - you might want to use a proper role system
+        raise HTTPException(status_code=403, detail="Only admin users can perform this action")
+    
+    # Find all posts with negative thumbs up counts
+    negative_posts = session.query(Post).filter(Post.thumbs_up < 0).all()
+    
+    # Fix the negative counts
+    fixed_count = 0
+    for post in negative_posts:
+        post.thumbs_up = 0
+        fixed_count += 1
+    
+    # Commit the changes
+    session.commit()
+    
+    return {"message": f"Fixed {fixed_count} posts with negative thumbs up counts"}
