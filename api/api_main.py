@@ -53,7 +53,6 @@ def login_user(user: UserLogin):
         return {"message": "Login successful", "token": token}
     raise HTTPException(status_code=401, detail="Invalid username or password")
 
-
 @app.post("/upload/")
 async def upload_photo(file: UploadFile = File(...), current_user: str = Depends(get_current_user)):
     if not file.content_type.startswith('image/'):
@@ -80,6 +79,18 @@ async def create_post(photo_id: int, current_user: str = Depends(get_current_use
 @app.get("/posts/recent/")
 async def get_recent_posts():
     posts = session.query(Post).order_by(Post.created_at.desc()).limit(20).all()
+    return {"posts": posts}
+
+@app.get("/posts/{post_id}/")
+async def get_post(post_id: int):
+    post = session.query(Post).filter_by(id=post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post doesn't exist")
+    return {"post": post}
+
+@app.get("/posts/all/{paging}")
+async def get_all_posts(paging: int):
+    posts = session.query(Post).order_by(Post.created_at.desc()).offset(paging * 20).limit(20).all()
     return {"posts": posts}
 
 @app.get("/users/{user_id}/posts/")
