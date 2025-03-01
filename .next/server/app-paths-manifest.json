@@ -1,7 +1,15 @@
 {
+<<<<<<< HEAD
   "/community/page": "app/community/page.js",
   "/posts/[id]/page": "app/posts/[id]/page.js",
   "/login/page": "app/login/page.js",
   "/page": "app/page.js",
   "/tutorial/page": "app/tutorial/page.js"
+=======
+  "/tutorial/page": "app/tutorial/page.js",
+  "/page": "app/page.js",
+  "/login/page": "app/login/page.js",
+  "/privacy/page": "app/privacy/page.js",
+  "/terms/page": "app/terms/page.js"
+>>>>>>> parent of da7aa1a (remove duped footer)
 }

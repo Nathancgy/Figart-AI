@@ -1,0 +1,48 @@
+
+> figart-ai-app@0.1.0 dev:verbose
+> NODE_OPTIONS='--trace-warnings' next dev
+
+
+
+
+================================================================================
+NEXT.JS CONFIG LOADING - THIS SHOULD BE VISIBLE IN THE CONSOLE
+================================================================================
+Environment variables: {
+  NEXT_PUBLIC_API_URL: 'http://192.168.8.115:8000',
+  NEXT_PUBLIC_FRONTEND_URL: 'http://192.168.8.115:3000'
+}
+================================================================================
+
+
+
+
+
+
+================================================================================
+NEXT.JS CONFIG LOADING - THIS SHOULD BE VISIBLE IN THE CONSOLE
+================================================================================
+Environment variables: {
+  NEXT_PUBLIC_API_URL: 'http://192.168.8.115:8000',
+  NEXT_PUBLIC_FRONTEND_URL: 'http://192.168.8.115:3000'
+}
+================================================================================
+
+
+
+   ▲ Next.js 15.2.0
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.8.115:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+
+
+
+================================================================================
+HEADERS FUNCTION EXECUTED - THIS SHOULD BE VISIBLE IN THE CONSOLE
+================================================================================
+
+
+
+ ✓ Ready in 2.3s
