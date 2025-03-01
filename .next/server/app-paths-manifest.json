@@ -1,4 +1,7 @@
 {
-  "/ai/page": "app/ai/page.js",
-  "/tutorial/page": "app/tutorial/page.js"
+  "/tutorial/page": "app/tutorial/page.js",
+  "/page": "app/page.js",
+  "/login/page": "app/login/page.js",
+  "/privacy/page": "app/privacy/page.js",
+  "/terms/page": "app/terms/page.js"
 }

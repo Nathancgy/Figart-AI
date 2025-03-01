@@ -283,9 +283,22 @@ export default function CommunityPage() {
   };
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+    // Ensure only one file is being processed
+    if (!event.target.files || event.target.files.length === 0) {
+      return;
+    }
+    
+    if (event.target.files.length > 1) {
+      setError("Only one image can be uploaded at a time");
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+    
+    const file = event.target.files[0];
+    
     try {
       setUploading(true);
       setError(null);
@@ -469,6 +482,7 @@ export default function CommunityPage() {
                     ref={fileInputRef}
                     onChange={handleUpload}
                     accept="image/*"
+                    multiple={false}
                     className="hidden"
                     aria-label="Upload photo"
                   />

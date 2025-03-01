@@ -16,7 +16,7 @@ const openai = new OpenAI({
 export async function extractImageFeatures(imageUrl: string) {
   try {
     // Analyze image using a computer vision model
-    const result = await hf.computerVision({
+    const result = await hf.imageClassification({
       data: await fetch(imageUrl).then(r => r.blob()),
       model: 'google/vit-base-patch16-224',
     });
@@ -52,7 +52,9 @@ export async function detectObjects(imageUrl: string) {
 export async function findOptimalFrame(imageUrl: string, aspectRatio = 9/16) {
   try {
     // Get image dimensions
-    const metadata = await sharp(await fetch(imageUrl).then(r => r.arrayBuffer())).metadata();
+    const imageBuffer = await fetch(imageUrl).then(r => r.arrayBuffer());
+    const metadata = await sharp(Buffer.from(imageBuffer)).metadata();
+    
     if (!metadata.width || !metadata.height) {
       throw new Error('Failed to get image dimensions');
     }
