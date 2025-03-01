@@ -428,9 +428,15 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
                   </div>
                   <div className="p-6 relative">
                     <h3 className="font-bold text-lg text-indigo-100">AI's Suggested Frame</h3>
-                    <p className="mt-2 text-sm text-indigo-300">
-                      This is the optimal frame calculated by our AI based on photography principles.
-                    </p>
+                    {score !== null && (
+                      <div className="mt-4">
+                        <div className="mt-4 p-4 bg-indigo-800 rounded-lg border-2 border-indigo-400 shadow-xl relative z-10 min-h-[80px] overflow-auto" style={{ backgroundColor: '#3730a3', borderColor: '#818cf8' }}>
+                          <p className="text-white text-sm md:text-base font-semibold opacity-100 visible" style={{ color: 'white', textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
+                            This is the optimal frame calculated by our AI based on photography principles.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -454,15 +460,21 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
                   </div>
                   <div className="p-6 relative">
                     <h3 className="font-bold text-lg text-indigo-100">Community's Favorite</h3>
-                    <p className="mt-2 text-sm text-indigo-300">
-                      This frame has received the most likes from the community.
-                    </p>
-                    <div className="mt-4 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-rose-400 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                      </svg>
-                      <span className="font-bold text-indigo-100">{popularFrame.likes} likes</span>
-                    </div>
+                    {score !== null && (
+                      <div className="mt-4">
+                        <div className="mt-4 p-4 bg-indigo-800 rounded-lg border-2 border-indigo-400 shadow-xl relative z-10 min-h-[80px] overflow-auto" style={{ backgroundColor: '#3730a3', borderColor: '#818cf8' }}>
+                          <p className="text-white text-sm md:text-base font-semibold opacity-100 visible" style={{ color: 'white', textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
+                            This frame has received the most likes from the community.
+                          </p>
+                          <div className="mt-2 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-rose-400 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                            </svg>
+                            <span className="font-bold text-indigo-100">{popularFrame.likes} likes</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
