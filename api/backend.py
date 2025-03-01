@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine, Column, Integer, String, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from fastapi import HTTPException
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 from datetime import datetime, timedelta
@@ -88,3 +89,8 @@ def create_post(photo_id, user_id):
     session.commit()
     return post.id
 
+def get_post_or_404(post_id):
+    post = session.query(Post).filter_by(id=post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post doesn't exist")
+    return post

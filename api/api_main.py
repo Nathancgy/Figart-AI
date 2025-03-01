@@ -1,10 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from backend import session as db_session, User, add_user, login
+from backend import (
+    session, User, add_user, 
+    login, get_post_or_404, Photo, Post, Comment,
+    save_photo, create_post
+)
 from datetime import datetime, timedelta
 import jwt
-
-session = {}
 
 app = FastAPI()
 
@@ -23,7 +25,6 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         return username
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
-
 
 class UserCreate(BaseModel):
     username: str
@@ -100,9 +101,7 @@ async def get_user_posts(user_id: int):
 
 @app.post("/posts/{post_id}/thumbs-up/")
 async def thumbs_up_post(post_id: int, current_user: str = Depends(get_current_user)):
-    post = session.query(Post).filter_by(id=post_id).first()
-    if not post: #TODO
-        raise HTTPException(status_code=404, detail="Post doesn't exist")
+    post = get_post_or_404(post_id)
     user = session.query(User).filter_by(username=current_user).first()
     if post_id in user.thumbed_posts:
         raise HTTPException(status_code=400, detail="You already thumbed up this post")
@@ -113,9 +112,7 @@ async def thumbs_up_post(post_id: int, current_user: str = Depends(get_current_u
 
 @app.post("/posts/{post_id}/thumbs-down/")
 async def thumbs_down_post(post_id: int, current_user: str = Depends(get_current_user)):
-    post = session.query(Post).filter_by(id=post_id).first()
-    if not post: #TODO
-        raise HTTPException(status_code=404, detail="Post doesn't exist")
+    post = get_post_or_404(post_id)
     user = session.query(User).filter_by(username=current_user).first()
     if post_id not in user.thumbed_posts:
         raise HTTPException(status_code=400, detail="You haven't thumbed up this post")
@@ -123,3 +120,36 @@ async def thumbs_down_post(post_id: int, current_user: str = Depends(get_current
     user.thumbed_posts.pop(post_id)
     session.commit()
     return {"message": "Thumbs up removed successfully"}
+
+@app.post("/posts/{post_id}/delete/")
+async def delete_post(post_id: int, current_user: str = Depends(get_current_user)):
+    post = get_post_or_404(post_id)
+    if post.user_id != current_user:
+        raise HTTPException(status_code=403, detail="You do not have permission to delete this post")
+    session.delete(post)
+    session.commit()
+    return {"message": "Post deleted successfully"}
+
+@app.post("/posts/{post_id}/comment/add/")
+async def comment_post(post_id: int, comment: str, current_user: str = Depends(get_current_user)):
+    post = get_post_or_404(post_id)
+    comment = Comment(post_id=post_id, comment=comment, user_id=current_user)
+    session.add(comment)
+    session.commit()
+    return {"message": "Comment added successfully", "comment_id": comment.id}
+
+@app.get("/posts/{post_id}/comments/")
+async def get_post_comments(post_id: int):
+    comments = session.query(Comment).filter_by(post_id=post_id).all()
+    return {"comments": comments}
+
+@app.post("/posts/{post_id}/comment/{comment_id}/delete/")
+async def delete_comment(post_id: int, comment_id: int, current_user: str = Depends(get_current_user)):
+    comment = session.query(Comment).filter_by(id=comment_id).first()
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment doesn't exist")
+    if comment.user_id != current_user:
+        raise HTTPException(status_code=403, detail="You do not have permission to delete this comment")
+    session.delete(comment)
+    session.commit()
+    return {"message": "Comment deleted successfully"}
