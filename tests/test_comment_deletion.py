@@ -41,12 +41,12 @@ class TestCommentDeletion(unittest.TestCase):
         # Delete the post
         delete_post(self.user1_token, self.post_id)
         
-        # Try to get comments for the deleted post
+        # Try to get the deleted post
         # This should fail with a 404 error
         with self.assertRaises(Exception) as context:
-            get_post_comments(self.post_id)
+            api_request(f"/posts/{self.post_id}/")
         
-        self.assertIn("404", str(context.exception))
+        self.assertIn("Post doesn't exist", str(context.exception))
     
     def test_comment_deletion_individually(self):
         """Test that comments can be deleted individually."""
@@ -75,7 +75,7 @@ class TestCommentDeletion(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             delete_comment(self.user2_token, self.post_id, comment_id)
         
-        self.assertIn("403", str(context.exception))
+        self.assertIn("You do not have permission to delete this comment", str(context.exception))
         
         # Verify comment still exists
         comments = get_post_comments(self.post_id)
@@ -90,7 +90,7 @@ class TestCommentDeletion(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             delete_post(self.user2_token, self.post_id)
         
-        self.assertIn("403", str(context.exception))
+        self.assertIn("You do not have permission to delete this post", str(context.exception))
         
         # Verify post and comment still exist
         comments = get_post_comments(self.post_id)

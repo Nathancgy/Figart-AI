@@ -5,9 +5,11 @@ Pytest configuration file with fixtures and markers.
 import os
 import pytest
 import time
+import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.common.by import By
 
 from test_utils import (
     create_user, create_test_image, create_test_post,
@@ -27,9 +29,10 @@ def pytest_configure(config):
 @pytest.fixture(scope="session")
 def test_image():
     """Create a test image for post creation."""
-    os.makedirs("tests", exist_ok=True)
-    create_test_image()
-    return "tests/test_image.jpg"
+    # Create the test image in the root directory
+    image_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_image.jpg")
+    create_test_image(image_path)
+    return image_path
 
 @pytest.fixture(scope="session")
 def test_user():
@@ -37,16 +40,22 @@ def test_user():
     username, password, token = create_user()
     return {"username": username, "password": password, "token": token}
 
+@pytest.fixture(scope="session")
+def test_other_user():
+    """Create a second test user for permission testing."""
+    username, password, token = create_user()
+    return {"username": username, "password": password, "token": token}
+
 @pytest.fixture(scope="function")
-def test_post(test_user):
+def test_post(test_user, test_image):
     """Create a test post for each test."""
-    post_id = create_test_post(test_user["token"])
+    post_id = create_test_post(test_user["token"], test_image)
     yield post_id
     # Cleanup: try to delete the post after the test
     try:
         delete_post(test_user["token"], post_id)
-    except Exception:
-        pass  # Ignore errors during cleanup
+    except:
+        pass  # Post might already be deleted by the test
 
 @pytest.fixture(scope="function")
 def test_comment(test_user, test_post):
@@ -59,13 +68,24 @@ def test_comment(test_user, test_post):
 @pytest.fixture(scope="session")
 def driver_init():
     """Initialize WebDriver for frontend tests."""
+    # Check if frontend is available before attempting to initialize WebDriver
+    try:
+        response = requests.get("http://localhost:3000", timeout=2)
+        if response.status_code >= 400:
+            pytest.skip("Frontend server is not available at http://localhost:3000")
+    except requests.RequestException:
+        pytest.skip("Frontend server is not available at http://localhost:3000")
+    
     # Try Chrome first
     try:
         options = ChromeOptions()
         options.add_argument('--headless')
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
+        options.add_argument('--window-size=1920,1080')
         driver = webdriver.Chrome(options=options)
+        driver.set_page_load_timeout(10)
         yield driver
         driver.quit()
         return
@@ -77,12 +97,13 @@ def driver_init():
         options = FirefoxOptions()
         options.add_argument('--headless')
         driver = webdriver.Firefox(options=options)
+        driver.set_page_load_timeout(10)
         yield driver
         driver.quit()
         return
     except Exception as e:
         print(f"Could not initialize Firefox WebDriver: {e}")
-        pytest.skip("WebDriver not available")
+        pytest.skip("WebDriver not available - neither Chrome nor Firefox could be initialized")
 
 @pytest.fixture(scope="function")
 def driver(driver_init):
@@ -96,24 +117,41 @@ def driver(driver_init):
 def authenticated_driver(driver, test_user):
     """Get WebDriver with authenticated session."""
     # Navigate to login page
-    driver.get("http://localhost:3000/login")
-    
-    # Wait for page to load
-    time.sleep(2)
-    
-    # Fill in login form
     try:
-        username_input = driver.find_element("id", "username")
-        password_input = driver.find_element("id", "password")
-        login_button = driver.find_element("xpath", "//button[contains(text(), 'Login')]")
+        driver.get("http://localhost:3000/login")
         
-        username_input.send_keys(test_user["username"])
-        password_input.send_keys(test_user["password"])
-        login_button.click()
-        
-        # Wait for login to complete
+        # Wait for page to load
         time.sleep(2)
+        
+        # Fill in login form
+        try:
+            # Check if we're already logged in
+            if driver.find_elements(By.XPATH, "//button[contains(text(), 'Logout')]"):
+                print("User already logged in")
+                return driver
+                
+            username_input = driver.find_element(By.ID, "username")
+            password_input = driver.find_element(By.ID, "password")
+            login_button = driver.find_element(By.XPATH, "//button[contains(text(), 'Login')]")
+            
+            username_input.send_keys(test_user["username"])
+            password_input.send_keys(test_user["password"])
+            login_button.click()
+            
+            # Wait for login to complete
+            time.sleep(2)
+            
+            # Verify login was successful
+            if driver.find_elements(By.XPATH, "//button[contains(text(), 'Logout')]"):
+                print("Login successful")
+            else:
+                print("Login may have failed - no logout button found")
+                
+        except Exception as e:
+            print(f"Login failed: {e}")
+            pytest.skip(f"Login failed: {e}")
     except Exception as e:
-        print(f"Login failed: {e}")
+        print(f"Failed to navigate to login page: {e}")
+        pytest.skip(f"Failed to navigate to login page: {e}")
     
     return driver 

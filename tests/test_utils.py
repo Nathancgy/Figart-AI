@@ -3,6 +3,7 @@ import json
 import time
 import random
 import string
+import os
 from typing import Dict, Any, Optional, List, Tuple
 
 # Base URL for API requests
@@ -74,7 +75,9 @@ def api_request(
 def create_test_post(token: str, image_path: str = "test_image.jpg") -> int:
     """Create a test post and return its ID."""
     with open(image_path, "rb") as img:
-        files = {"file": ("test_image.jpg", img, "image/jpeg")}
+        # Use the basename of the image path for the filename in the request
+        filename = os.path.basename(image_path)
+        files = {"file": (filename, img, "image/jpeg")}
         response = requests.post(
             f"{BASE_URL}/posts/create/",
             headers={"Authorization": f"Bearer {token}"},
