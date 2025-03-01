@@ -16,6 +16,32 @@ export const removeAuthToken = () => {
   Cookies.remove(TOKEN_COOKIE_NAME);
 };
 
+/**
+ * Logs out the user by removing the auth token
+ * @param redirect Whether to redirect to the login page (default: true)
+ */
+export const logout = (redirect: boolean = true) => {
+  removeAuthToken();
+  
+  // Clear any user data from localStorage
+  localStorage.removeItem('user');
+  
+  // Show a notification to the user
+  if (typeof window !== 'undefined') {
+    // Use toast notification if available, otherwise use alert
+    if (window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('auth:sessionExpired', {
+        detail: { message: 'Your session has expired. Please log in again.' }
+      }));
+    }
+    
+    // Redirect to login page if requested
+    if (redirect) {
+      window.location.href = '/login';
+    }
+  }
+};
+
 export const login = async (username: string, password: string) => {
   const response = await fetch(`${API_URL()}/users/login/`, {
     method: 'POST',

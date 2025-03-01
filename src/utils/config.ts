@@ -13,22 +13,48 @@ export const getFrontendBaseUrl = (): string => {
 
 // API URL configuration - use the same base URL as the frontend
 export const API_URL = (): string => {
-  // Default to the frontend base URL
-  const baseUrl = getFrontendBaseUrl();
+  // Log environment variables
+  if (typeof window !== 'undefined') {
+    console.log('Environment variables:', {
+      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+    });
+  }
+
+  // If an environment variable is set, use it (highest priority)
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    console.log('Using API URL from environment variable:', process.env.NEXT_PUBLIC_API_URL);
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
   
   // If we're in a browser environment, use the current hostname with port 8000
   if (typeof window !== 'undefined') {
     const { protocol, hostname } = window.location;
-    return `${protocol}//${hostname}:8000`;
+    console.log('Current hostname:', hostname);
+    
+    // For local development
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      const apiUrl = `${protocol}//${hostname}:8000`;
+      console.log('Using local API URL:', apiUrl);
+      return apiUrl;
+    }
+    
+    // For production/staging
+    const apiUrl = `${protocol}//${hostname}:8000`;
+    console.log('Using dynamic API URL based on hostname:', apiUrl);
+    return apiUrl;
   }
   
-  // For server-side rendering, use an environment variable or fallback
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  // Fallback for server-side rendering
+  const fallbackUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  console.log('Using fallback API URL:', fallbackUrl);
+  return fallbackUrl;
 };
 
 // Photo URL helper function
 export const getPhotoUrl = (photoUuid: string): string => {
-  return `${API_URL()}/photos/${photoUuid}`;
+  const url = `${API_URL()}/photos/${photoUuid}`;
+  console.log('Photo URL generated:', url);
+  return url;
 };
 
 // API endpoints
