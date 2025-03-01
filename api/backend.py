@@ -1,18 +1,23 @@
-from sqlalchemy import create_engine, Column, Integer, String, JSON, ForeignKey
+from sqlalchemy import DateTime, create_engine, Column, Integer, String, JSON, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from fastapi import HTTPException
 from werkzeug.security import generate_password_hash, check_password_hash
-import jwt
-from datetime import datetime, timedelta
+from datetime import datetime
+
+from settings import *
 
 Base = declarative_base()
+
+def utcnow():
+    tz = datetime.now().astimezone().tzinfo
+    return datetime.now(tz)
 
 class User(Base):
     __tablename__ = 'users'
     
     id = Column(Integer, primary_key=True)
-    username = Column(String, unique=True, nullable=False)
+    username = Column(String(24), unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
     thumbed_posts = Column(JSON, default=[]) # List of integers for thumbed post IDs
 
@@ -47,14 +52,14 @@ class Comment(Base):
     id = Column(Integer, primary_key=True)
     post_id = Column(Integer, ForeignKey('posts.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    content = Column(String, nullable=False, max_length=255)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    content = Column(String(60), nullable=False)
+    created_at = Column(DateTime, default=utcnow)
 
     def __repr__(self):
         return f"<Comment(id={self.id}, post_id={self.post_id}, user_id={self.user_id}, content={self.content}, created_at={self.created_at})>"
 
 # Database setup
-engine = create_engine('sqlite:///users.db')
+engine = create_engine(DB)
 Base.metadata.create_all(engine)
 
 Session = sessionmaker(bind=engine)

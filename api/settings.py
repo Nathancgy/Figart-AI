@@ -1,0 +1,1 @@
+DB = "sqlite:///db.sqlite3"

@@ -1,3 +1,4 @@
+import uuid
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from backend import (
@@ -11,7 +12,7 @@ import jwt
 app = FastAPI()
 
 from fastapi import File, UploadFile
-from fastapi import Depends, Security
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -32,7 +33,7 @@ class UserCreate(BaseModel):
 
 @app.post("/users/register/")
 def create_user(user: UserCreate):
-    if db_session.query(User).filter_by(username=user.username).first():
+    if session.query(User).filter_by(username=user.username).first():
         raise HTTPException(status_code=400, detail="Username already registered")
     add_user(user.username, user.password)
     return {"message": "User created successfully"}
