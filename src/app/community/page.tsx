@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { apiRequest, getAuthToken } from '@/utils/auth';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_URL, getPhotoUrl } from '@/utils/config';
 
 interface Post {
   id: number;
@@ -294,7 +295,7 @@ export default function CommunityPage() {
       formData.append('file', file);
 
       // Upload the photo and create post in one step
-      const response = await fetch('http://localhost:8000/posts/create/', {
+      const response = await fetch(`${API_URL()}/posts/create/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -436,8 +437,8 @@ export default function CommunityPage() {
                       }}
                       className={`block w-full text-left px-4 py-2 hover:bg-gray-100 ${sortMethod === 'recent' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700'}`}
                     >
-                      Recent
-                    </button>
+                Recent
+              </button>
                     <button
                       onClick={() => {
                         handleSortMethodChange('likes');
@@ -482,20 +483,20 @@ export default function CommunityPage() {
               <p className="text-gray-500">No posts yet. Be the first to share a photo!</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {posts.map((post) => (
                 <div key={post.id} className="border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
-                  <div className="relative pb-[75%] bg-gray-100">
+                <div className="relative pb-[75%] bg-gray-100">
                     <Link href={`/posts/${post.id}`}>
                       <img
-                        src={`http://localhost:8000/photos/${post.photo_uuid}`}
+                        src={getPhotoUrl(post.photo_uuid)}
                         alt={`Post ${post.id}`}
                         className="absolute inset-0 w-full h-full object-cover cursor-pointer"
                       />
                     </Link>
-                  </div>
-                  <div className="p-4">
-                    <div className="flex justify-between items-start">
+                </div>
+                <div className="p-4">
+                  <div className="flex justify-between items-start">
                       <div className="flex items-center">
                         <span className="text-sm font-medium text-gray-700">By: {post.user_id}</span>
                       </div>
@@ -505,9 +506,9 @@ export default function CommunityPage() {
                         aria-label={likedPosts.includes(post.id) ? "Unlike post" : "Like post"}
                       >
                         {likedPosts.includes(post.id) ? (
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-1 text-red-500">
-                            <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-                          </svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-1 text-red-500">
+                        <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+                      </svg>
                         ) : (
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
@@ -525,15 +526,15 @@ export default function CommunityPage() {
                           hour: '2-digit',
                           minute: '2-digit'
                         })}
-                      </div>
+                  </div>
                       <Link href={`/posts/${post.id}`} className="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
                         View Details
                       </Link>
-                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+          </div>
           )}
         </div>
       </div>

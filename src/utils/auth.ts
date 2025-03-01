@@ -1,6 +1,7 @@
 import Cookies from 'js-cookie';
+import { API_URL } from './config';
 
-const API_URL = 'http://localhost:8000';
+// const API_URL = 'http://localhost:8000';
 const TOKEN_COOKIE_NAME = 'auth_token';
 
 export const setAuthToken = (token: string) => {
@@ -16,7 +17,7 @@ export const removeAuthToken = () => {
 };
 
 export const login = async (username: string, password: string) => {
-  const response = await fetch(`${API_URL}/users/login/`, {
+  const response = await fetch(`${API_URL()}/users/login/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -45,7 +46,7 @@ export const login = async (username: string, password: string) => {
 };
 
 export const signup = async (username: string, password: string) => {
-  const response = await fetch(`${API_URL}/users/register/`, {
+  const response = await fetch(`${API_URL()}/users/register/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -84,7 +85,7 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
     ...options.headers,
   };
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
+  const response = await fetch(`${API_URL()}${endpoint}`, {
     ...options,
     headers,
     credentials: 'include',

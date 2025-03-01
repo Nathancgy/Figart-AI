@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiRequest, getAuthToken } from '@/utils/auth';
 import { useAuth } from '@/contexts/AuthContext';
+import { getPhotoUrl } from '@/utils/config';
 
 interface Post {
   id: number;
@@ -448,7 +449,7 @@ export default function PostDetailPage() {
             {/* Image container - full width */}
             <div className="w-full bg-black flex items-center justify-center p-4 border-b border-gray-200">
               <img
-                src={`http://localhost:8000/photos/${post.photo_uuid}`}
+                src={getPhotoUrl(post.photo_uuid)}
                 alt={`Post by ${post.user_id}`}
                 className="max-w-full max-h-[80vh] object-contain"
               />
