@@ -250,8 +250,14 @@ async def thumbs_down_post(post_id: int, current_user: str = Depends(get_current
 @app.post("/posts/{post_id}/delete/")
 async def delete_post(post_id: int, current_user: str = Depends(get_current_user)):
     post = get_post_or_404(post_id)
-    if post.user_id != current_user:
+    user = session.query(User).filter_by(id=post.user_id).first()
+    if user.username != current_user:
         raise HTTPException(status_code=403, detail="You do not have permission to delete this post")
+    
+    # Delete associated comments first (as a backup measure)
+    session.query(Comment).filter_by(post_id=post_id).delete()
+    
+    # Then delete the post
     session.delete(post)
     session.commit()
     return {"message": "Post deleted successfully"}
@@ -303,7 +309,8 @@ async def delete_comment(post_id: int, comment_id: int, current_user: str = Depe
     comment = session.query(Comment).filter_by(id=comment_id).first()
     if not comment:
         raise HTTPException(status_code=404, detail="Comment doesn't exist")
-    if comment.user_id != current_user:
+    user = session.query(User).filter_by(id=comment.user_id).first()
+    if user.username != current_user:
         raise HTTPException(status_code=403, detail="You do not have permission to delete this comment")
     session.delete(comment)
     session.commit()

@@ -1,6 +1,6 @@
 from sqlalchemy import DateTime, create_engine, Column, Integer, String, JSON, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, relationship
 from fastapi import HTTPException
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -35,6 +35,9 @@ class Post(Base):
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     created_at = Column(DateTime, default=utcnow)
     thumbs_up = Column(Integer, default=0)
+    
+    # Add relationship to comments with cascade delete
+    comments = relationship("Comment", cascade="all, delete-orphan", backref="post")
 
     def __repr__(self):
         return f"<Post(id={self.id}, photo_id={self.photo_id}, user_id={self.user_id}, created_at={self.created_at}, thumbs_up={self.thumbs_up})>"
