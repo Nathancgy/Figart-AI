@@ -4,6 +4,7 @@ TCP Proxy for Figart-AI
 
 This script creates a bidirectional TCP proxy between localhost and 192.168.8.120
 for ports 8000 (API server) and 3000 (frontend server).
+It also accepts connections on port 80 and forwards them to port 3000.
 
 Usage:
     python tcp_proxy.py
@@ -30,16 +31,20 @@ logger = logging.getLogger('tcp_proxy')
 DEFAULT_LOCAL_HOST = '127.0.0.1'
 DEFAULT_REMOTE_HOST = '192.168.8.120'
 PROXY_PORTS = [8000, 3000]  # API and frontend ports
+PORT_MAPPINGS = {
+    80: 3000  # Map local port 80 to remote port 3000
+}
 BUFFER_SIZE = 4096
 
 class TCPProxy:
     """Bidirectional TCP proxy that forwards connections between local and remote hosts."""
     
-    def __init__(self, local_host, remote_host, port):
+    def __init__(self, local_host, remote_host, local_port, remote_port=None):
         """Initialize the TCP proxy for a specific port."""
         self.local_host = local_host
         self.remote_host = remote_host
-        self.port = port
+        self.local_port = local_port
+        self.remote_port = remote_port if remote_port else local_port
         self.server_socket = None
         self.connections = []
         self.running = False
@@ -49,32 +54,32 @@ class TCPProxy:
         try:
             self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.server_socket.bind((self.local_host, self.port))
+            self.server_socket.bind((self.local_host, self.local_port))
             self.server_socket.listen(5)
             self.running = True
             
-            logger.info(f"Proxy listening on {self.local_host}:{self.port} -> {self.remote_host}:{self.port}")
+            logger.info(f"Proxy listening on {self.local_host}:{self.local_port} -> {self.remote_host}:{self.remote_port}")
             
             while self.running:
                 try:
                     client_socket, addr = self.server_socket.accept()
-                    logger.info(f"Connection from {addr[0]}:{addr[1]} to port {self.port}")
+                    logger.info(f"Connection from {addr[0]}:{addr[1]} to port {self.local_port}")
                     
                     # Connect to remote server
                     remote_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    remote_socket.connect((self.remote_host, self.port))
+                    remote_socket.connect((self.remote_host, self.remote_port))
                     
                     # Start bidirectional forwarding
                     client_thread = threading.Thread(
                         target=self.forward_data,
-                        args=(client_socket, remote_socket, f"{addr[0]}:{addr[1]}", f"{self.remote_host}:{self.port}")
+                        args=(client_socket, remote_socket, f"{addr[0]}:{addr[1]}", f"{self.remote_host}:{self.remote_port}")
                     )
                     client_thread.daemon = True
                     client_thread.start()
                     
                     remote_thread = threading.Thread(
                         target=self.forward_data,
-                        args=(remote_socket, client_socket, f"{self.remote_host}:{self.port}", f"{addr[0]}:{addr[1]}")
+                        args=(remote_socket, client_socket, f"{self.remote_host}:{self.remote_port}", f"{addr[0]}:{addr[1]}")
                     )
                     remote_thread.daemon = True
                     remote_thread.start()
@@ -83,11 +88,11 @@ class TCPProxy:
                     
                 except (socket.error, OSError) as e:
                     if self.running:  # Only log if we're still supposed to be running
-                        logger.error(f"Socket error on port {self.port}: {e}")
+                        logger.error(f"Socket error on port {self.local_port}: {e}")
                     break
                 
         except Exception as e:
-            logger.error(f"Error starting proxy on port {self.port}: {e}")
+            logger.error(f"Error starting proxy on port {self.local_port}: {e}")
         finally:
             self.stop()
     
@@ -137,7 +142,7 @@ class TCPProxy:
                 pass
             self.server_socket = None
         
-        logger.info(f"Proxy stopped for port {self.port}")
+        logger.info(f"Proxy stopped for port {self.local_port}")
 
 def main():
     """Main function to start the proxy servers."""
@@ -145,6 +150,7 @@ def main():
     parser.add_argument('--local-host', default=DEFAULT_LOCAL_HOST, help='Local host to bind to')
     parser.add_argument('--remote-host', default=DEFAULT_REMOTE_HOST, help='Remote host to connect to')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
+    parser.add_argument('--disable-port-80', action='store_true', help='Disable port 80 forwarding')
     args = parser.parse_args()
     
     if args.verbose:
@@ -155,6 +161,7 @@ def main():
     proxy_threads = []
     
     try:
+        # Standard port forwarding
         for port in PROXY_PORTS:
             proxy = TCPProxy(args.local_host, args.remote_host, port)
             proxies.append(proxy)
@@ -164,7 +171,24 @@ def main():
             thread.start()
             proxy_threads.append(thread)
         
+        # Port mapping forwarding (e.g., 80 -> 3000)
+        if not args.disable_port_80:
+            for local_port, remote_port in PORT_MAPPINGS.items():
+                try:
+                    proxy = TCPProxy(args.local_host, args.remote_host, local_port, remote_port)
+                    proxies.append(proxy)
+                    
+                    thread = threading.Thread(target=proxy.start)
+                    thread.daemon = True
+                    thread.start()
+                    proxy_threads.append(thread)
+                except Exception as e:
+                    logger.error(f"Failed to set up port mapping {local_port} -> {remote_port}: {e}")
+                    logger.warning("Port 80 typically requires root/admin privileges. Try running with sudo/as administrator.")
+        
         logger.info(f"TCP Proxy running for ports {PROXY_PORTS}")
+        if not args.disable_port_80:
+            logger.info(f"Port mappings: {PORT_MAPPINGS}")
         logger.info("Press Ctrl+C to stop")
         
         # Keep the main thread alive
