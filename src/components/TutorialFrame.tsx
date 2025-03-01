@@ -50,53 +50,50 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
     setFeedback(null);
     setShowOriginal(false);
     setImagesLoaded({});
-    
-    // Initialize crop data with default values
-    setCropData({
-      x: isHorizontal ? 200 : 100,
-      y: isHorizontal ? 100 : 200,
-      width: isHorizontal ? 667 : 375,
-      height: isHorizontal ? 375 : 667
-    });
   }, [tutorialImage.id, isHorizontal]);
   
   // Preload the tutorial image
   useEffect(() => {
     if (tutorialImage && tutorialImage.imageUrl) {
-      // Reset the images loaded state
-      setImagesLoaded({});
-      
-      // Mark all images as loaded after a timeout
-      // This is a fallback in case the image loading events don't fire
-      const timer = setTimeout(() => {
-        setImagesLoaded({
-          'tutorial': true,
-          'user-frame': true,
-          'ai-frame': true,
-          'popular-frame': true,
-          'original': true
-        });
-      }, 2000);
-      
-      // Preload the main tutorial image
-      const img = new window.Image();
-      img.onload = () => {
-        console.log('Tutorial image loaded:', tutorialImage.imageUrl);
+      const preloadImage = new window.Image();
+      preloadImage.src = tutorialImage.imageUrl;
+      preloadImage.onload = () => {
         setImagesLoaded(prev => ({
           ...prev,
-          'tutorial': true,
-          'user-frame': true,
-          'ai-frame': true,
-          'popular-frame': true,
-          'original': true
+          'tutorial': true
         }));
-        clearTimeout(timer);
       };
-      img.src = tutorialImage.imageUrl;
-      
-      return () => clearTimeout(timer);
     }
   }, [tutorialImage]);
+  
+  // Set initial crop box dimensions when the cropper is ready
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const cropper = (cropperRef.current as any)?.cropper;
+      if (cropper) {
+        // Set the initial crop box to match our standard dimensions
+        const containerData = cropper.getContainerData();
+        
+        // Calculate a scale factor to fit our standard dimensions in the container
+        const standardWidth = isHorizontal ? 667 : 375;
+        const standardHeight = isHorizontal ? 375 : 667;
+        
+        const scaleX = containerData.width / standardWidth;
+        const scaleY = containerData.height / standardHeight;
+        const scale = Math.min(scaleX, scaleY) * 0.8; // 80% of the fitting scale
+        
+        // Set crop box in the center with our standard dimensions
+        cropper.setCropBoxData({
+          left: (containerData.width - standardWidth * scale) / 2,
+          top: (containerData.height - standardHeight * scale) / 2,
+          width: standardWidth * scale,
+          height: standardHeight * scale
+        });
+      }
+    }, 500); // Small delay to ensure cropper is initialized
+    
+    return () => clearTimeout(timer);
+  }, [isHorizontal, tutorialImage.id]);
   
   // Handle the submission of the user's frame
   const handleSubmit = async () => {
@@ -210,57 +207,46 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
   };
   
   const renderFramedImage = (image: string, frame: { x: number; y: number; width: number; height: number }, alt: string, id: string) => {
+    // Use fixed container dimensions matching our standard frame size
+    const containerWidth = 375; // Standard mobile width
+    const containerHeight = 667; // Standard mobile height
+    
+    // Calculate scale factor
+    const scale = getScaleFactor(frame.width, frame.height, containerWidth, containerHeight);
+    
     return (
       <>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="animate-pulse flex space-x-4">
+            <div className="h-12 w-12 rounded-full bg-indigo-500/30"></div>
+          </div>
+        </div>
+        <div className="absolute inset-0 overflow-hidden">
+          <img
+            src={image}
+            alt={alt}
+            className="absolute origin-top-left"
+            style={{
+              left: `${-frame.x * scale}px`,
+              top: `${-frame.y * scale}px`,
+              width: 'auto',
+              height: 'auto',
+              transform: `scale(${scale})`,
+              maxWidth: 'none',
+              maxHeight: 'none',
+            }}
+            onLoad={() => handleImageLoad(id)}
+          />
+        </div>
         {!imagesLoaded[id] && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30">
+          <div className="absolute inset-0 flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
           </div>
         )}
-        <div className="absolute inset-0 overflow-hidden">
-          <div 
-            style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundImage: `url(${image})`,
-              backgroundSize: 'contain',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat'
-            }}
-          />
-        </div>
       </>
     );
   };
   
-<<<<<<< HEAD
-  // Add useEffect to log state changes
-  useEffect(() => {
-    console.log("Step changed:", step);
-    console.log("Score:", score);
-    console.log("Feedback:", feedback);
-    
-    // Mark all images as loaded when step changes to results
-    if (step === 'results') {
-      setTimeout(() => {
-        setImagesLoaded({
-          'tutorial': true,
-          'user-frame': true,
-          'ai-frame': true,
-          'popular-frame': true,
-          'original': true
-        });
-      }, 500);
-    }
-  }, [step, score, feedback]);
-  
-  // Add useEffect to log cropData changes
-  useEffect(() => {
-    console.log("CropData updated:", cropData);
-  }, [cropData]);
-  
-=======
->>>>>>> parent of 71ac343 (Fixed always loading localhost in lan networks)
   return (
     <div className="w-full mx-auto p-6">
       {step === 'framing' ? (
@@ -296,12 +282,6 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
                     cropBoxMovable={true}
                     cropBoxResizable={true}
                     zoomOnWheel={false}
-                    checkOrientation={true}
-                    checkCrossOrigin={true}
-                    background={false}
-                    initialAspectRatio={aspectRatio}
-                    minCropBoxWidth={100}
-                    minCropBoxHeight={100}
                   />
                 </div>
                 
@@ -373,59 +353,26 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
             </div>
             
             {showOriginal && (
-              <div className="mb-8 border border-indigo-800/30 rounded-lg overflow-hidden relative">
-                <div 
-                  className="w-full h-[400px] bg-cover bg-center"
-                  style={{
-                    backgroundImage: `url(${tutorialImage.imageUrl})`,
-                    backgroundSize: 'contain',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'center'
-                  }}
+              <div className="mb-8 border border-indigo-800/30 rounded-lg overflow-hidden">
+                <img 
+                  src={tutorialImage.imageUrl} 
+                  alt="Original" 
+                  className="w-full h-auto"
+                  onLoad={() => handleImageLoad('original')}
                 />
+                {!imagesLoaded['original'] && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+                  </div>
+                )}
               </div>
             )}
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 relative">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
               {/* Connected journey line */}
               <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent hidden md:block"></div>
               
               {/* User's Frame */}
-<<<<<<< HEAD
-              <div className="glass border border-indigo-800/30 rounded-xl overflow-hidden relative h-full flex flex-col">
-                <div className="relative w-full" style={{ paddingBottom: isHorizontal ? '56.25%' : '177.78%', height: 0 }}>
-                  <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-                    {!imagesLoaded["user-frame"] && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30">
-                        <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
-                      </div>
-                    )}
-                    <img 
-                      src={tutorialImage.imageUrl}
-                      alt="Your Frame"
-                      className="absolute w-full h-full"
-                      onLoad={() => handleImageLoad("user-frame")}
-                      style={{
-                        objectFit: 'cover',
-                        objectPosition: `${50 - (cropData.x / 20)}% ${50 - (cropData.y / 20)}%`
-                      }}
-                    />
-                  </div>
-                  
-                  {/* User Frame Overlay */}
-                  <div className="absolute bottom-3 right-3 z-30">
-                    <div className="bg-emerald-900/70 backdrop-blur-sm p-1.5 rounded-lg shadow-lg border border-emerald-500/50">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4 md:p-6 relative z-10 flex-grow flex flex-col">
-                  <h3 className="font-bold text-lg text-indigo-100">Your Frame</h3>
-                  {score !== null && (
-                    <div className="mt-4 relative z-10 flex-grow" style={{ position: 'relative', zIndex: 10, opacity: 1 }}>
-=======
               <div className="glass border border-indigo-800/30 rounded-xl overflow-hidden relative group">
                 <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <div className="relative" style={{ paddingBottom: isHorizontal ? `${(375/667) * 100}%` : `${(667/375) * 100}%` }}>
@@ -440,7 +387,6 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
                   <h3 className="font-bold text-lg text-indigo-100">Your Frame</h3>
                   {score !== null && (
                     <div className="mt-4">
->>>>>>> parent of 71ac343 (Fixed always loading localhost in lan networks)
                       <div className="w-full bg-indigo-900/50 rounded-full h-3 mt-2 overflow-hidden">
                         <div 
                           className={`h-3 rounded-full ${
@@ -455,55 +401,21 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
                         <span className="text-sm text-indigo-300">Score</span>
                         <span className="font-bold text-indigo-100">{score}/100</span>
                       </div>
-<<<<<<< HEAD
                       <div className="mt-4 p-4 bg-indigo-800 rounded-lg border-2 border-indigo-400 shadow-xl relative z-10 min-h-[80px] overflow-auto" style={{ backgroundColor: '#3730a3', borderColor: '#818cf8' }}>
                         {feedback ? (
                           <p className="text-white text-sm md:text-base font-semibold opacity-100 visible" style={{ color: 'white', textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>{feedback}</p>
                         ) : (
                           <p className="text-white text-sm md:text-base font-semibold opacity-100 visible" style={{ color: 'white', textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>No feedback available</p>
                         )}
-=======
-                      <div className="mt-4 p-4 glass rounded-lg">
-                        {feedback}
->>>>>>> parent of 71ac343 (Fixed always loading localhost in lan networks)
                       </div>
                     </div>
+                    
                   )}
                 </div>
               </div>
               
               {/* AI's Optimal Frame */}
               {optimalFrame && (
-<<<<<<< HEAD
-                <div className="glass border border-indigo-800/30 rounded-xl overflow-hidden relative h-full flex flex-col">
-                  <div className="relative w-full" style={{ paddingBottom: isHorizontal ? '56.25%' : '177.78%', height: 0 }}>
-                    <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-                      {!imagesLoaded["ai-frame"] && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30">
-                          <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
-                        </div>
-                      )}
-                      <img 
-                        src={tutorialImage.imageUrl}
-                        alt="AI's Suggested Frame"
-                        className="absolute w-full h-full"
-                        onLoad={() => handleImageLoad("ai-frame")}
-                        style={{
-                          objectFit: 'cover',
-                          objectPosition: `${50 - (optimalFrame.x / 20)}% ${50 - (optimalFrame.y / 20)}%`
-                        }}
-                      />
-                    </div>
-                    
-                    {/* AI Frame Image Overlay */}
-                    <div className="absolute bottom-3 right-3 z-30">
-                      <div className="bg-indigo-900/70 backdrop-blur-sm p-1.5 rounded-lg shadow-lg border border-indigo-500/50">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                      </div>
-                    </div>
-=======
                 <div className="glass border border-indigo-800/30 rounded-xl overflow-hidden relative group">
                   <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div className="relative" style={{ paddingBottom: isHorizontal ? `${(375/667) * 100}%` : `${(667/375) * 100}%` }}>
@@ -513,79 +425,18 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
                       "AI Suggested Frame",
                       "ai-frame"
                     )}
->>>>>>> parent of 71ac343 (Fixed always loading localhost in lan networks)
                   </div>
-                  <div className="p-4 md:p-6 relative flex-grow">
+                  <div className="p-6 relative">
                     <h3 className="font-bold text-lg text-indigo-100">AI's Suggested Frame</h3>
                     <p className="mt-2 text-sm text-indigo-300">
                       This is the optimal frame calculated by our AI based on photography principles.
                     </p>
-                    
-                    {/* Sample frame illustration */}
-                    <div className="mt-4 p-3 bg-indigo-900/30 rounded-lg border border-indigo-700/50">
-                      <div className="flex items-center mb-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span className="text-sm font-medium text-indigo-200">Frame Tips</span>
-                      </div>
-                      <ul className="space-y-1 text-xs text-indigo-300">
-                        <li className="flex items-start">
-                          <svg className="h-4 w-4 text-indigo-400 mr-1 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <span>Follows rule of thirds</span>
-                        </li>
-                        <li className="flex items-start">
-                          <svg className="h-4 w-4 text-indigo-400 mr-1 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <span>Balanced composition</span>
-                        </li>
-                        <li className="flex items-start">
-                          <svg className="h-4 w-4 text-indigo-400 mr-1 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <span>Clear focal point</span>
-                        </li>
-                      </ul>
-                    </div>
                   </div>
                 </div>
               )}
               
               {/* Most Popular Frame */}
               {popularFrame && (
-<<<<<<< HEAD
-                <div className="glass border border-indigo-800/30 rounded-xl overflow-hidden relative h-full flex flex-col">
-                  <div className="relative w-full" style={{ paddingBottom: isHorizontal ? '56.25%' : '177.78%', height: 0 }}>
-                    <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-                      {!imagesLoaded["popular-frame"] && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30">
-                          <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
-                        </div>
-                      )}
-                      <img 
-                        src={tutorialImage.imageUrl}
-                        alt="Community's Favorite Frame"
-                        className="absolute w-full h-full"
-                        onLoad={() => handleImageLoad("popular-frame")}
-                        style={{
-                          objectFit: 'cover',
-                          objectPosition: `${50 - (popularFrame.frameX / 20)}% ${50 - (popularFrame.frameY / 20)}%`
-                        }}
-                      />
-                    </div>
-                    
-                    {/* Community Frame Image Overlay */}
-                    <div className="absolute bottom-3 right-3 z-30">
-                      <div className="bg-rose-900/70 backdrop-blur-sm p-1.5 rounded-lg shadow-lg border border-rose-500/50">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-rose-300" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    </div>
-=======
                 <div className="glass border border-indigo-800/30 rounded-xl overflow-hidden relative group">
                   <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div className="relative" style={{ paddingBottom: isHorizontal ? `${(375/667) * 100}%` : `${(667/375) * 100}%` }}>
@@ -600,9 +451,8 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
                       "Community Favorite",
                       "popular-frame"
                     )}
->>>>>>> parent of 71ac343 (Fixed always loading localhost in lan networks)
                   </div>
-                  <div className="p-4 md:p-6 relative flex-grow">
+                  <div className="p-6 relative">
                     <h3 className="font-bold text-lg text-indigo-100">Community's Favorite</h3>
                     <p className="mt-2 text-sm text-indigo-300">
                       This frame has received the most likes from the community.

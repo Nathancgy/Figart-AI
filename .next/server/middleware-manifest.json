@@ -1,35 +1,6 @@
 {
   "version": 3,
-<<<<<<< HEAD
-  "middleware": {
-    "/": {
-      "files": [
-        "server/edge-runtime-webpack.js",
-        "server/middleware.js"
-      ],
-      "name": "middleware",
-      "page": "/",
-      "matchers": [
-        {
-          "regexp": "^/.*$",
-          "originalSource": "/:path*"
-        }
-      ],
-      "wasm": [],
-      "assets": [],
-      "env": {
-        "__NEXT_BUILD_ID": "development",
-        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "xh/+mpk05dchtPlOGISS23iDrsg1IYadZIZORU6G0v4="
-      }
-    }
-  },
-  "functions": {},
-  "sortedMiddleware": [
-    "/"
-  ]
-=======
   "middleware": {},
-  "sortedMiddleware": [],
-  "functions": {}
->>>>>>> parent of 71ac343 (Fixed always loading localhost in lan networks)
+  "functions": {},
+  "sortedMiddleware": []
 }
