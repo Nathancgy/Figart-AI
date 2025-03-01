@@ -118,10 +118,17 @@ async def get_user_posts(user_id: int):
 async def thumbs_up_post(post_id: int, current_user: str = Depends(get_current_user)):
     post = get_post_or_404(post_id)
     user = session.query(User).filter_by(username=current_user).first()
+    
+    # Check if the post is already in the user's thumbed posts
     if post_id in user.thumbed_posts:
         raise HTTPException(status_code=400, detail="You already thumbed up this post")
+    
+    # Update the post's thumbs up count
     post.thumbs_up += 1
-    user.thumbed_posts.append(post_id)
+    
+    # Create a new list with the post ID added (SQLAlchemy detects this as a change)
+    user.thumbed_posts = user.thumbed_posts + [post_id]
+    
     session.commit()
     return {"message": "Thumbs up added successfully"}
 
@@ -129,10 +136,17 @@ async def thumbs_up_post(post_id: int, current_user: str = Depends(get_current_u
 async def thumbs_down_post(post_id: int, current_user: str = Depends(get_current_user)):
     post = get_post_or_404(post_id)
     user = session.query(User).filter_by(username=current_user).first()
+    
+    # Check if the post is in the user's thumbed posts
     if post_id not in user.thumbed_posts:
         raise HTTPException(status_code=400, detail="You haven't thumbed up this post")
+    
+    # Update the post's thumbs up count
     post.thumbs_up -= 1
-    user.thumbed_posts.pop(post_id)
+    
+    # Remove the post ID from the user's thumbed posts
+    user.thumbed_posts = [p for p in user.thumbed_posts if p != post_id]
+    
     session.commit()
     return {"message": "Thumbs up removed successfully"}
 
@@ -187,3 +201,10 @@ async def get_photo(photoname: str):
         raise HTTPException(status_code=404, detail="Photo doesn't exist")
 
     return FileResponse(f"uploads/{photoname}")
+
+@app.get("/users/liked-posts/")
+async def get_user_liked_posts(current_user: str = Depends(get_current_user)):
+    user = session.query(User).filter_by(username=current_user).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"liked_posts": user.thumbed_posts}
