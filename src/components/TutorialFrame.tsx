@@ -10,7 +10,7 @@ interface TutorialFrameProps {
   tutorialImage: TutorialImage;
   onSubmit: (frame: Omit<Frame, 'id' | 'userId' | 'user' | 'createdAt' | 'likes'>) => Promise<void>;
   optimalFrame?: { x: number; y: number; width: number; height: number };
-  popularFrame?: Frame;
+  popularFrame?: Frame & { frame: { x: number; y: number; width: number; height: number } };
   isHorizontal?: boolean;
 }
 
@@ -170,6 +170,7 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
         // Score from 0 to 100
         const calculatedScore = Math.round((iou * 0.7 + (1 - centerDistance) * 0.3) * 100);
         setScore(calculatedScore);
+        console.log(cropData)
         
         // Set feedback
         if (calculatedScore >= 90) {
@@ -274,7 +275,7 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
                     guides={true}
                     ref={cropperRef}
                     viewMode={1}
-                    dragMode="move"
+                    dragMode="crop"
                     autoCropArea={0.8}
                     responsive={true}
                     restore={false}
@@ -432,7 +433,7 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
                       <div className="mt-4">
                         <div className="mt-4 p-4 bg-indigo-800 rounded-lg border-2 border-indigo-400 shadow-xl relative z-10 min-h-[80px] overflow-auto" style={{ backgroundColor: '#3730a3', borderColor: '#818cf8' }}>
                           <p className="text-white text-sm md:text-base font-semibold opacity-100 visible" style={{ color: 'white', textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>
-                            This is the optimal frame calculated by our AI based on photography principles.
+                          This is the optimal frame calculated by our AI based on photography principles.
                           </p>
                         </div>
                       </div>
@@ -448,12 +449,7 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
                   <div className="relative" style={{ paddingBottom: isHorizontal ? `${(375/667) * 100}%` : `${(667/375) * 100}%` }}>
                     {renderFramedImage(
                       tutorialImage.imageUrl,
-                      {
-                        x: popularFrame.frameX,
-                        y: popularFrame.frameY,
-                        width: popularFrame.frameWidth,
-                        height: popularFrame.frameHeight
-                      },
+                      popularFrame.frame,
                       "Community Favorite",
                       "popular-frame"
                     )}
@@ -513,25 +509,25 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
               </h3>
               <ul className="space-y-2 text-indigo-300">
                 <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 mr-2 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span>Find the main subject and ensure it's properly positioned</span>
                 </li>
                 <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 mr-2 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span>Use the rule of thirds - align key elements with the grid lines</span>
                 </li>
                 <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 mr-2 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span>Look for natural framing opportunities within the scene</span>
                 </li>
                 <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 mr-2 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span>Consider the visual flow and balance of the composition</span>

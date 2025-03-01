@@ -28,7 +28,7 @@ const SAMPLE_TUTORIAL_IMAGES: TutorialImage[] = [
 ];
 
 // Sample popular frames (would typically come from the database)
-const SAMPLE_POPULAR_FRAMES: Record<string, Frame> = {
+const SAMPLE_POPULAR_FRAMES: Record<string, Frame & { frame: { x: number; y: number; width: number; height: number } }> = {
   '1': {
     id: 'pop1',
     originImageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
@@ -39,6 +39,12 @@ const SAMPLE_POPULAR_FRAMES: Record<string, Frame> = {
     userId: 'user1',
     createdAt: new Date(),
     likes: 42,
+    frame: {
+      x: 1488,
+      y: 0,
+      width: 2763,
+      height: 4912
+    }
   },
   '2': {
     id: 'pop2',
@@ -50,6 +56,12 @@ const SAMPLE_POPULAR_FRAMES: Record<string, Frame> = {
     userId: 'user1',
     createdAt: new Date(),
     likes: 28,
+    frame: {
+      x: 1115,
+      y: 0,
+      width: 1867,
+      height: 3318
+    }
   },
   '3': {
     id: 'pop3',
@@ -61,47 +73,27 @@ const SAMPLE_POPULAR_FRAMES: Record<string, Frame> = {
     userId: 'user1',
     createdAt: new Date(),
     likes: 35,
-  },
-  '4': {
-    id: 'pop4',
-    originImageUrl: '/images/tutorial1.jpeg',
-    frameX: 280,
-    frameY: 180,
-    frameWidth: 375,
-    frameHeight: 667,
-    userId: 'user1',
-    createdAt: new Date(),
-    likes: 51,
-  },
-  '5': {
-    id: 'pop5',
-    originImageUrl: '/images/tutorial2.jpeg',
-    frameX: 380,
-    frameY: 120,
-    frameWidth: 375,
-    frameHeight: 667,
-    userId: 'user1',
-    createdAt: new Date(),
-    likes: 39,
+    frame: {
+      x: 4057,
+      y: 576,
+      width: 1101,
+      height: 1957
+    }
   },
 };
 
 // Pre-calculated optimal frames (in a real app, these would come from the AI)
 const OPTIMAL_FRAMES: Record<string, { x: number; y: number; width: number; height: number }> = {
-  '1': { x: 250, y: 200, width: 375, height: 667 },
-  '2': { x: 420, y: 80, width: 375, height: 667 },
-  '3': { x: 300, y: 150, width: 375, height: 667 },
-  '4': { x: 270, y: 180, width: 375, height: 667 },
-  '5': { x: 390, y: 100, width: 375, height: 667 },
+  '1': { x: 1488, y: 0, width: 2763, height: 4912 },
+  '2': { x: 1115, y: 0, width: 1867, height: 3318 },
+  '3': { x: 4057, y: 576, width: 1101, height: 1957 },
 };
 
 // Horizontal frames option
 const HORIZONTAL_OPTIMAL_FRAMES: Record<string, { x: number; y: number; width: number; height: number }> = {
-  '1': { x: 200, y: 250, width: 667, height: 375 },
-  '2': { x: 100, y: 300, width: 667, height: 375 },
-  '3': { x: 150, y: 200, width: 667, height: 375 },
-  '4': { x: 180, y: 230, width: 667, height: 375 },
-  '5': { x: 120, y: 280, width: 667, height: 375 },
+  '1': { x: 758, y: 752, width: 5888, height: 3312 },
+  '2': { x: 325, y: 770, width: 4000, height: 2250 },
+  '3': { x: 0, y: 0, width: 6000, height: 3375 },
 };
 
 // Photography tips for each tutorial image
