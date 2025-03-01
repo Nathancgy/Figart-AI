@@ -29,7 +29,7 @@ class UserCreate(BaseModel):
     username: str
     password: str
 
-@app.post("/register/")
+@app.post("/users/register/")
 def create_user(user: UserCreate):
     if db_session.query(User).filter_by(username=user.username).first():
         raise HTTPException(status_code=400, detail="Username already registered")
@@ -42,7 +42,7 @@ class UserLogin(BaseModel):
 
 SECRET_KEY = "your_secret_key"  # Change this to a secure key
 
-@app.post("/login/")
+@app.post("/users/login/")
 def login_user(user: UserLogin):
     if login(user.username, user.password):
         # Generate a token
@@ -64,6 +64,51 @@ async def upload_photo(file: UploadFile = File(...), current_user: str = Depends
     file_location = f"uploads/{filename}"
     with open(file_location, "wb") as buffer:
         buffer.write(await file.read())
-    
-    return {"message": "Photo uploaded successfully"}
 
+    photo_id = save_photo(filename, current_user)
+    
+    return {"message": "Photo uploaded successfully", "photo_id": photo_id}
+
+@app.post("/posts/create/")
+async def create_post(photo_id: int, current_user: str = Depends(get_current_user)):
+    photo = session.query(Photo).filter_by(id=photo_id, user_id=current_user).first()
+    if not photo:
+        raise HTTPException(status_code=403, detail="You do not have permission to create a post for this photo")
+    post_id = create_post(photo_id, current_user)
+    return {"message": "Post created successfully", "post_id": post_id}
+
+@app.get("/posts/recent/")
+async def get_recent_posts():
+    posts = session.query(Post).order_by(Post.created_at.desc()).limit(20).all()
+    return {"posts": posts}
+
+@app.get("/users/{user_id}/posts/")
+async def get_user_posts(user_id: int):
+    posts = session.query(Post).filter_by(user_id=user_id).order_by(Post.created_at.desc()).all()
+    return {"posts": posts}
+
+@app.post("/posts/{post_id}/thumbs-up/")
+async def thumbs_up_post(post_id: int, current_user: str = Depends(get_current_user)):
+    post = session.query(Post).filter_by(id=post_id).first()
+    if not post: #TODO
+        raise HTTPException(status_code=404, detail="Post doesn't exist")
+    user = session.query(User).filter_by(username=current_user).first()
+    if post_id in user.thumbed_posts:
+        raise HTTPException(status_code=400, detail="You already thumbed up this post")
+    post.thumbs_up += 1
+    user.thumbed_posts.append(post_id)
+    session.commit()
+    return {"message": "Thumbs up added successfully"}
+
+@app.post("/posts/{post_id}/thumbs-down/")
+async def thumbs_down_post(post_id: int, current_user: str = Depends(get_current_user)):
+    post = session.query(Post).filter_by(id=post_id).first()
+    if not post: #TODO
+        raise HTTPException(status_code=404, detail="Post doesn't exist")
+    user = session.query(User).filter_by(username=current_user).first()
+    if post_id not in user.thumbed_posts:
+        raise HTTPException(status_code=400, detail="You haven't thumbed up this post")
+    post.thumbs_up -= 1
+    user.thumbed_posts.pop(post_id)
+    session.commit()
+    return {"message": "Thumbs up removed successfully"}
