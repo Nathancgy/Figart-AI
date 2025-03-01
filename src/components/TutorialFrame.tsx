@@ -132,6 +132,9 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
       // Submit the frame
       await onSubmit(frameData);
       
+      // Show the results
+      setStep('results');
+      
       // Calculate score if optimal frame is available
       if (optimalFrame) {
         const imageWidth = cropperRef.current.naturalWidth;
@@ -169,63 +172,23 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
         
         // Score from 0 to 100
         const calculatedScore = Math.round((iou * 0.7 + (1 - centerDistance) * 0.3) * 100);
-        
-        // Set feedback first
-        let feedbackText = "";
-        if (calculatedScore >= 90) {
-          feedbackText = "Excellent framing! Your eye for composition is spot on.";
-        } else if (calculatedScore >= 75) {
-          feedbackText = "Great job! Your frame is very close to the optimal composition.";
-        } else if (calculatedScore >= 60) {
-          feedbackText = "Good effort. Try adjusting your frame slightly for better composition.";
-        } else if (calculatedScore >= 40) {
-          feedbackText = "You're on the right track. Consider the rule of thirds and try again.";
-        } else {
-          feedbackText = "Keep practicing! Try focusing on the main subject of the image.";
-        }
-        
-        // Set feedback and score
-        setFeedback(feedbackText || "No feedback available");
         setScore(calculatedScore);
         
-        // Debug log
-        console.log("Setting feedback:", feedbackText || "No feedback available");
-        
-        // Force a re-render by setting step after a small delay
-        setTimeout(() => {
-          setStep('results');
-          console.log("Step set to results with feedback:", feedbackText || "No feedback available");
-        }, 100);
-      } else {
-        // Default feedback if no optimal frame
-        const defaultFeedback = "Thanks for submitting your frame! Since there's no optimal frame for comparison, we can't provide a specific score.";
-        setFeedback(defaultFeedback);
-        setScore(75);
-        
-        // Debug log
-        console.log("Setting default feedback:", defaultFeedback);
-        
-        // Force a re-render by setting step after a small delay
-        setTimeout(() => {
-          setStep('results');
-          console.log("Step set to results with default feedback:", defaultFeedback);
-        }, 100);
+        // Set feedback
+        if (calculatedScore >= 90) {
+          setFeedback("Excellent framing! Your eye for composition is spot on.");
+        } else if (calculatedScore >= 75) {
+          setFeedback("Great job! Your frame is very close to the optimal composition.");
+        } else if (calculatedScore >= 60) {
+          setFeedback("Good effort. Try adjusting your frame slightly for better composition.");
+        } else if (calculatedScore >= 40) {
+          setFeedback("You're on the right track. Consider the rule of thirds and try again.");
+        } else {
+          setFeedback("Keep practicing! Try focusing on the main subject of the image.");
+        }
       }
     } catch (error) {
       console.error('Error submitting frame:', error);
-      // Set fallback feedback in case of error
-      const errorFeedback = "We encountered an issue analyzing your frame. Please try again.";
-      setFeedback(errorFeedback);
-      setScore(50);
-      
-      // Debug log
-      console.log("Setting error feedback:", errorFeedback);
-      
-      // Still show results even if there was an error
-      setTimeout(() => {
-        setStep('results');
-        console.log("Step set to results after error with feedback:", errorFeedback);
-      }, 100);
     } finally {
       setIsSubmitting(false);
     }
@@ -270,6 +233,7 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
     );
   };
   
+<<<<<<< HEAD
   // Add useEffect to log state changes
   useEffect(() => {
     console.log("Step changed:", step);
@@ -295,6 +259,8 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
     console.log("CropData updated:", cropData);
   }, [cropData]);
   
+=======
+>>>>>>> parent of 71ac343 (Fixed always loading localhost in lan networks)
   return (
     <div className="w-full mx-auto p-6">
       {step === 'framing' ? (
@@ -387,8 +353,8 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
             </div>
           </div>
         </div>
-      ) : step === 'results' ? (
-        <div className="space-y-8" key={`results-${score}`} style={{ opacity: 1, visibility: 'visible' }}>
+      ) : (
+        <div className="space-y-8">
           <div className="glass-dark rounded-xl p-8 shadow-lg mb-8 relative overflow-hidden">
             <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-indigo-600 rounded-full mix-blend-screen filter blur-[80px] opacity-10"></div>
             <div className="absolute -top-20 -right-20 w-80 h-80 bg-purple-600 rounded-full mix-blend-screen filter blur-[80px] opacity-10"></div>
@@ -425,6 +391,7 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
               <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent hidden md:block"></div>
               
               {/* User's Frame */}
+<<<<<<< HEAD
               <div className="glass border border-indigo-800/30 rounded-xl overflow-hidden relative h-full flex flex-col">
                 <div className="relative w-full" style={{ paddingBottom: isHorizontal ? '56.25%' : '177.78%', height: 0 }}>
                   <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
@@ -458,6 +425,22 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
                   <h3 className="font-bold text-lg text-indigo-100">Your Frame</h3>
                   {score !== null && (
                     <div className="mt-4 relative z-10 flex-grow" style={{ position: 'relative', zIndex: 10, opacity: 1 }}>
+=======
+              <div className="glass border border-indigo-800/30 rounded-xl overflow-hidden relative group">
+                <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative" style={{ paddingBottom: isHorizontal ? `${(375/667) * 100}%` : `${(667/375) * 100}%` }}>
+                  {renderFramedImage(
+                    tutorialImage.imageUrl,
+                    cropData,
+                    "Your Frame",
+                    "user-frame"
+                  )}
+                </div>
+                <div className="p-6 relative">
+                  <h3 className="font-bold text-lg text-indigo-100">Your Frame</h3>
+                  {score !== null && (
+                    <div className="mt-4">
+>>>>>>> parent of 71ac343 (Fixed always loading localhost in lan networks)
                       <div className="w-full bg-indigo-900/50 rounded-full h-3 mt-2 overflow-hidden">
                         <div 
                           className={`h-3 rounded-full ${
@@ -472,12 +455,17 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
                         <span className="text-sm text-indigo-300">Score</span>
                         <span className="font-bold text-indigo-100">{score}/100</span>
                       </div>
+<<<<<<< HEAD
                       <div className="mt-4 p-4 bg-indigo-800 rounded-lg border-2 border-indigo-400 shadow-xl relative z-10 min-h-[80px] overflow-auto" style={{ backgroundColor: '#3730a3', borderColor: '#818cf8' }}>
                         {feedback ? (
                           <p className="text-white text-sm md:text-base font-semibold opacity-100 visible" style={{ color: 'white', textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>{feedback}</p>
                         ) : (
                           <p className="text-white text-sm md:text-base font-semibold opacity-100 visible" style={{ color: 'white', textShadow: '0 0 2px rgba(0,0,0,0.5)' }}>No feedback available</p>
                         )}
+=======
+                      <div className="mt-4 p-4 glass rounded-lg">
+                        {feedback}
+>>>>>>> parent of 71ac343 (Fixed always loading localhost in lan networks)
                       </div>
                     </div>
                   )}
@@ -486,6 +474,7 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
               
               {/* AI's Optimal Frame */}
               {optimalFrame && (
+<<<<<<< HEAD
                 <div className="glass border border-indigo-800/30 rounded-xl overflow-hidden relative h-full flex flex-col">
                   <div className="relative w-full" style={{ paddingBottom: isHorizontal ? '56.25%' : '177.78%', height: 0 }}>
                     <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
@@ -514,6 +503,17 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
                         </svg>
                       </div>
                     </div>
+=======
+                <div className="glass border border-indigo-800/30 rounded-xl overflow-hidden relative group">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative" style={{ paddingBottom: isHorizontal ? `${(375/667) * 100}%` : `${(667/375) * 100}%` }}>
+                    {renderFramedImage(
+                      tutorialImage.imageUrl,
+                      optimalFrame,
+                      "AI Suggested Frame",
+                      "ai-frame"
+                    )}
+>>>>>>> parent of 71ac343 (Fixed always loading localhost in lan networks)
                   </div>
                   <div className="p-4 md:p-6 relative flex-grow">
                     <h3 className="font-bold text-lg text-indigo-100">AI's Suggested Frame</h3>
@@ -556,6 +556,7 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
               
               {/* Most Popular Frame */}
               {popularFrame && (
+<<<<<<< HEAD
                 <div className="glass border border-indigo-800/30 rounded-xl overflow-hidden relative h-full flex flex-col">
                   <div className="relative w-full" style={{ paddingBottom: isHorizontal ? '56.25%' : '177.78%', height: 0 }}>
                     <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
@@ -584,6 +585,22 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
                         </svg>
                       </div>
                     </div>
+=======
+                <div className="glass border border-indigo-800/30 rounded-xl overflow-hidden relative group">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative" style={{ paddingBottom: isHorizontal ? `${(375/667) * 100}%` : `${(667/375) * 100}%` }}>
+                    {renderFramedImage(
+                      tutorialImage.imageUrl,
+                      {
+                        x: popularFrame.frameX,
+                        y: popularFrame.frameY,
+                        width: popularFrame.frameWidth,
+                        height: popularFrame.frameHeight
+                      },
+                      "Community Favorite",
+                      "popular-frame"
+                    )}
+>>>>>>> parent of 71ac343 (Fixed always loading localhost in lan networks)
                   </div>
                   <div className="p-4 md:p-6 relative flex-grow">
                     <h3 className="font-bold text-lg text-indigo-100">Community's Favorite</h3>
@@ -611,19 +628,6 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
             </div>
           </div>
         </div>
-      ) : (
-        <div className="space-y-8">
-          <div className="glass-dark rounded-xl p-8 shadow-lg mb-8 relative overflow-hidden">
-            <h2 className="text-3xl font-bold text-indigo-100">Something went wrong</h2>
-            <p className="text-indigo-300 mt-4">Please try again.</p>
-            <button
-              onClick={handleReset}
-              className="px-6 py-3 glass text-indigo-100 rounded-full hover:text-white transition-all duration-300 transform hover:scale-105 mt-8"
-            >
-              Try Again
-            </button>
-          </div>
-        </div>
       )}
       
       {/* Learning hints */}
@@ -647,25 +651,25 @@ const TutorialFrame: React.FC<TutorialFrameProps> = ({
               </h3>
               <ul className="space-y-2 text-indigo-300">
                 <li className="flex items-start">
-                  <svg className="h-5 w-5 mr-2 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 text-indigo-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span>Find the main subject and ensure it's properly positioned</span>
                 </li>
                 <li className="flex items-start">
-                  <svg className="h-5 w-5 mr-2 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 text-indigo-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span>Use the rule of thirds - align key elements with the grid lines</span>
                 </li>
                 <li className="flex items-start">
-                  <svg className="h-5 w-5 mr-2 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 text-indigo-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span>Look for natural framing opportunities within the scene</span>
                 </li>
                 <li className="flex items-start">
-                  <svg className="h-5 w-5 mr-2 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5 text-indigo-400 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span>Consider the visual flow and balance of the composition</span>

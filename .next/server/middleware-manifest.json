@@ -1,5 +1,6 @@
 {
   "version": 3,
+<<<<<<< HEAD
   "middleware": {
     "/": {
       "files": [
@@ -26,4 +27,9 @@
   "sortedMiddleware": [
     "/"
   ]
+=======
+  "middleware": {},
+  "sortedMiddleware": [],
+  "functions": {}
+>>>>>>> parent of 71ac343 (Fixed always loading localhost in lan networks)
 }

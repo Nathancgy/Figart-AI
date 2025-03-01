@@ -9,19 +9,19 @@ import Image from 'next/image';
 const SAMPLE_TUTORIAL_IMAGES: TutorialImage[] = [
   {
     id: '1',
-    imageUrl: '/images/tutorial1.jpeg',
+    imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
     title: 'Mountain Landscape',
     description: 'Find the best frame to capture this beautiful mountain landscape.',
   },
   {
     id: '2',
-    imageUrl: '/images/tutorial2.jpeg',
+    imageUrl: 'https://images.unsplash.com/photo-1540270776932-e72e7c2d11cd',
     title: 'Cityscape at Night',
     description: 'Capture the vibrant city lights in the best possible frame.',
   },
   {
     id: '3',
-    imageUrl: '/images/tutorial3.jpeg',
+    imageUrl: 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29',
     title: 'Ocean Waves',
     description: 'Frame the perfect shot of these powerful ocean waves.',
   },
@@ -31,7 +31,7 @@ const SAMPLE_TUTORIAL_IMAGES: TutorialImage[] = [
 const SAMPLE_POPULAR_FRAMES: Record<string, Frame> = {
   '1': {
     id: 'pop1',
-    originImageUrl: '/images/tutorial1.jpeg',
+    originImageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb',
     frameX: 300,
     frameY: 150,
     frameWidth: 375,
@@ -42,7 +42,7 @@ const SAMPLE_POPULAR_FRAMES: Record<string, Frame> = {
   },
   '2': {
     id: 'pop2',
-    originImageUrl: '/images/tutorial2.jpeg',
+    originImageUrl: 'https://images.unsplash.com/photo-1540270776932-e72e7c2d11cd',
     frameX: 400,
     frameY: 100,
     frameWidth: 375,
@@ -53,7 +53,7 @@ const SAMPLE_POPULAR_FRAMES: Record<string, Frame> = {
   },
   '3': {
     id: 'pop3',
-    originImageUrl: '/images/tutorial3.jpeg',
+    originImageUrl: 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29',
     frameX: 350,
     frameY: 200,
     frameWidth: 375,

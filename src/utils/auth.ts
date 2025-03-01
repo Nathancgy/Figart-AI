@@ -19,6 +19,7 @@ export const removeAuthToken = () => {
   Cookies.remove(TOKEN_COOKIE_NAME);
 };
 
+<<<<<<< HEAD
 /**
  * Logs out the user by removing the auth token
  * @param redirect Whether to redirect to the login page (default: true)
@@ -39,6 +40,8 @@ export const logout = (redirect: boolean = true) => {
   }
 };
 
+=======
+>>>>>>> parent of 71ac343 (Fixed always loading localhost in lan networks)
 export const login = async (username: string, password: string) => {
   // console.log('Login function called');
   const cacheHeaders = getCacheControlHeaders();
