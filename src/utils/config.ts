@@ -1,4 +1,5 @@
 // Application configuration settings
+// console.log('Config module loaded');
 
 // Frontend URL helper function
 export const getFrontendBaseUrl = (): string => {
@@ -11,50 +12,43 @@ export const getFrontendBaseUrl = (): string => {
   return process.env.NEXT_PUBLIC_FRONTEND_URL || '';
 };
 
+// Cache control configuration
+export const DISABLE_CACHE = true; // Set to false to enable caching
+
+// Hardcoded API URL as a fallback - this should match your .env.local setting
+const HARDCODED_API_URL = 'http://192.168.8.115:8000';
+
 // API URL configuration - use the same base URL as the frontend
 export const API_URL = (): string => {
-  // Log environment variables
-  if (typeof window !== 'undefined') {
-    console.log('Environment variables:', {
-      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-    });
-  }
+  // Always return the hardcoded URL for consistency
+  return HARDCODED_API_URL;
+};
 
-  // If an environment variable is set, use it (highest priority)
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    console.log('Using API URL from environment variable:', process.env.NEXT_PUBLIC_API_URL);
-    return process.env.NEXT_PUBLIC_API_URL;
+// Get cache control headers based on configuration
+export const getCacheControlHeaders = (): HeadersInit => {
+  if (DISABLE_CACHE) {
+    return {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    };
   }
   
-  // If we're in a browser environment, use the current hostname with port 8000
-  if (typeof window !== 'undefined') {
-    const { protocol, hostname } = window.location;
-    console.log('Current hostname:', hostname);
-    
-    // For local development
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      const apiUrl = `${protocol}//${hostname}:8000`;
-      console.log('Using local API URL:', apiUrl);
-      return apiUrl;
-    }
-    
-    // For production/staging
-    const apiUrl = `${protocol}//${hostname}:8000`;
-    console.log('Using dynamic API URL based on hostname:', apiUrl);
-    return apiUrl;
-  }
-  
-  // Fallback for server-side rendering
-  const fallbackUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  console.log('Using fallback API URL:', fallbackUrl);
-  return fallbackUrl;
+  // Default caching behavior if not disabled
+  return {
+    'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+  };
 };
 
 // Photo URL helper function
 export const getPhotoUrl = (photoUuid: string): string => {
-  const url = `${API_URL()}/photos/${photoUuid}`;
-  console.log('Photo URL generated:', url);
-  return url;
+  if (!photoUuid) {
+    console.error('Invalid photoUuid:', photoUuid);
+    return '';
+  }
+  
+  const apiUrl = API_URL();
+  return `${apiUrl}/photos/${photoUuid}`;
 };
 
 // API endpoints

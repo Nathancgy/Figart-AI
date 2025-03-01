@@ -62,6 +62,28 @@ const SAMPLE_POPULAR_FRAMES: Record<string, Frame> = {
     createdAt: new Date(),
     likes: 35,
   },
+  '4': {
+    id: 'pop4',
+    originImageUrl: '/images/tutorial1.jpeg',
+    frameX: 280,
+    frameY: 180,
+    frameWidth: 375,
+    frameHeight: 667,
+    userId: 'user1',
+    createdAt: new Date(),
+    likes: 51,
+  },
+  '5': {
+    id: 'pop5',
+    originImageUrl: '/images/tutorial2.jpeg',
+    frameX: 380,
+    frameY: 120,
+    frameWidth: 375,
+    frameHeight: 667,
+    userId: 'user1',
+    createdAt: new Date(),
+    likes: 39,
+  },
 };
 
 // Pre-calculated optimal frames (in a real app, these would come from the AI)
@@ -69,6 +91,8 @@ const OPTIMAL_FRAMES: Record<string, { x: number; y: number; width: number; heig
   '1': { x: 250, y: 200, width: 375, height: 667 },
   '2': { x: 420, y: 80, width: 375, height: 667 },
   '3': { x: 300, y: 150, width: 375, height: 667 },
+  '4': { x: 270, y: 180, width: 375, height: 667 },
+  '5': { x: 390, y: 100, width: 375, height: 667 },
 };
 
 // Horizontal frames option
@@ -76,6 +100,37 @@ const HORIZONTAL_OPTIMAL_FRAMES: Record<string, { x: number; y: number; width: n
   '1': { x: 200, y: 250, width: 667, height: 375 },
   '2': { x: 100, y: 300, width: 667, height: 375 },
   '3': { x: 150, y: 200, width: 667, height: 375 },
+  '4': { x: 180, y: 230, width: 667, height: 375 },
+  '5': { x: 120, y: 280, width: 667, height: 375 },
+};
+
+// Photography tips for each tutorial image
+const TUTORIAL_TIPS: Record<string, string[]> = {
+  '1': [
+    'Look for natural framing elements like trees or rocks',
+    'Position the horizon line using the rule of thirds',
+    'Include foreground elements to create depth'
+  ],
+  '2': [
+    'Capture light trails from moving vehicles',
+    'Find a balance between bright lights and dark areas',
+    'Use buildings to create leading lines'
+  ],
+  '3': [
+    'Time your shot to capture the peak of wave action',
+    'Consider the direction of wave movement',
+    'Include shoreline elements for context'
+  ],
+  '4': [
+    'Place key elements at intersection points of the grid',
+    'Avoid centering the main subject',
+    'Balance visual weight across the frame'
+  ],
+  '5': [
+    'Identify natural lines that draw the eye through the image',
+    'Use converging lines to create perspective',
+    'Follow the path that your eye naturally takes'
+  ],
 };
 
 export default function TutorialPage() {
@@ -83,16 +138,19 @@ export default function TutorialPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isHorizontal, setIsHorizontal] = useState(false);
   const [frameResetKey, setFrameResetKey] = useState(0);
+  const [showTips, setShowTips] = useState(false);
 
   const currentImage = SAMPLE_TUTORIAL_IMAGES[currentImageIndex];
   const optimalFrame = isHorizontal 
     ? HORIZONTAL_OPTIMAL_FRAMES[currentImage.id] 
     : OPTIMAL_FRAMES[currentImage.id];
   const popularFrame = SAMPLE_POPULAR_FRAMES[currentImage.id];
+  const currentTips = TUTORIAL_TIPS[currentImage.id];
 
   // Simulate loading the optimal frames
   useEffect(() => {
     setIsLoading(true);
+    setShowTips(false);
     
     // Simulate AI computation with a slight delay
     const timer = setTimeout(() => {
@@ -108,6 +166,9 @@ export default function TutorialPage() {
     
     // Simulate a delay for the API call
     await new Promise(resolve => setTimeout(resolve, 800));
+    
+    // Show tips after submission
+    setShowTips(true);
     
     return Promise.resolve();
   };
@@ -193,6 +254,28 @@ export default function TutorialPage() {
             />
           )}
         </div>
+        
+        {/* Photography Tips Section */}
+        {showTips && (
+          <div className="mt-8 glass p-6 rounded-2xl border border-indigo-800/30 shadow-lg animate-fadeIn">
+            <h3 className="text-2xl font-bold text-indigo-100 mb-4 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              Photography Tips for {currentImage.title}
+            </h3>
+            <ul className="space-y-3 mt-4">
+              {currentTips.map((tip, index) => (
+                <li key={index} className="flex items-start">
+                  <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-indigo-900 text-indigo-300 mr-3 flex-shrink-0">
+                    {index + 1}
+                  </span>
+                  <span className="text-indigo-200">{tip}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         
         <div className="mt-10 text-center">
           <p className="text-xl text-indigo-300 mb-6">

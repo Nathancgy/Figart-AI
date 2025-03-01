@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getCacheControlHeaders, DISABLE_CACHE } from './utils/config';
 
 // Regex to match static assets
 const STATIC_ASSETS = /\.(jpg|jpeg|png|gif|webp|svg|ico|ttf|woff|woff2|css|js)$/;
@@ -13,6 +14,23 @@ function isStaticAsset(url: string): boolean {
 export function middleware(request: NextRequest) {
   const url = request.nextUrl.pathname;
   const response = NextResponse.next();
+
+  // Log that middleware is running
+  console.log('Middleware running for path:', url);
+  console.log('DISABLE_CACHE setting:', DISABLE_CACHE);
+
+  // If cache is disabled globally, apply no-cache headers to all responses
+  if (DISABLE_CACHE) {
+    console.log('Applying no-cache headers from config');
+    const cacheHeaders = getCacheControlHeaders();
+    
+    // Apply each cache control header
+    Object.entries(cacheHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    
+    return response;
+  }
 
   // Add caching headers for static assets
   if (isStaticAsset(url)) {

@@ -1,5 +1,8 @@
-import { API_URL, API_ENDPOINTS } from './config';
+import { API_URL, API_ENDPOINTS, getCacheControlHeaders } from './config';
 import { logout } from './auth';
+
+// Debug log to check if this file is being loaded
+console.log('API client module loaded');
 
 // Custom error class for API errors
 export class ApiError extends Error {
@@ -17,12 +20,15 @@ export async function apiClient<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  console.log('apiClient called with endpoint:', endpoint);
+  
   const token = localStorage.getItem('token');
   
   // Set default headers
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...getCacheControlHeaders(), // Add cache control headers
     ...options.headers,
   };
   
@@ -31,8 +37,13 @@ export async function apiClient<T>(
     headers,
   };
   
+  // Get the API URL and log it
+  const apiUrl = API_URL();
+  console.log('API URL in apiClient:', apiUrl);
+  
   try {
-    const response = await fetch(`${API_URL()}${endpoint}`, config);
+    console.log('Fetching from URL:', `${apiUrl}${endpoint}`);
+    const response = await fetch(`${apiUrl}${endpoint}`, config);
     
     // Handle unauthorized errors globally
     if (response.status === 401) {
@@ -48,21 +59,11 @@ export async function apiClient<T>(
       throw new ApiError(errorMessage, response.status);
     }
     
-    // Parse successful response
-    if (response.status !== 204) { // No content
-      return await response.json();
-    }
-    
-    return {} as T;
+    // For successful responses
+    return await response.json();
   } catch (error) {
-    // Rethrow ApiErrors (including 401s)
-    if (error instanceof ApiError) {
-      throw error;
-    }
-    
-    // Convert other errors to ApiError
     console.error('API request failed:', error);
-    throw new ApiError('Network error or server unavailable', 0);
+    throw error;
   }
 }
 

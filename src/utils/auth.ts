@@ -1,5 +1,8 @@
 import Cookies from 'js-cookie';
-import { API_URL } from './config';
+import { API_URL, getCacheControlHeaders } from './config';
+
+// Debug log to check if this file is being loaded
+// console.log('Auth module loaded');
 
 // const API_URL = 'http://localhost:8000';
 const TOKEN_COOKIE_NAME = 'auth_token';
@@ -21,6 +24,7 @@ export const removeAuthToken = () => {
  * @param redirect Whether to redirect to the login page (default: true)
  */
 export const logout = (redirect: boolean = true) => {
+  // console.log('Logout function called');
   removeAuthToken();
   
   // Clear any user data from localStorage
@@ -28,14 +32,7 @@ export const logout = (redirect: boolean = true) => {
   
   // Show a notification to the user
   if (typeof window !== 'undefined') {
-    // Use toast notification if available, otherwise use alert
-    if (window.dispatchEvent) {
-      window.dispatchEvent(new CustomEvent('auth:sessionExpired', {
-        detail: { message: 'Your session has expired. Please log in again.' }
-      }));
-    }
-    
-    // Redirect to login page if requested
+    // Only redirect if in browser environment and redirect is true
     if (redirect) {
       window.location.href = '/login';
     }
@@ -43,11 +40,19 @@ export const logout = (redirect: boolean = true) => {
 };
 
 export const login = async (username: string, password: string) => {
-  const response = await fetch(`${API_URL()}/users/login/`, {
+  // console.log('Login function called');
+  const cacheHeaders = getCacheControlHeaders();
+  
+  // Get the API URL and log it
+  const apiUrl = API_URL();
+  // console.log('API URL in login function:', apiUrl);
+  
+  const response = await fetch(`${apiUrl}/users/login/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      ...cacheHeaders,
     },
     credentials: 'include',
     mode: 'cors',
@@ -72,11 +77,14 @@ export const login = async (username: string, password: string) => {
 };
 
 export const signup = async (username: string, password: string) => {
+  const cacheHeaders = getCacheControlHeaders();
+  
   const response = await fetch(`${API_URL()}/users/register/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      ...cacheHeaders,
     },
     credentials: 'include',
     mode: 'cors',
@@ -102,27 +110,45 @@ export const signup = async (username: string, password: string) => {
 
 // Utility function for making authenticated API requests
 export const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
+  // console.log('%c apiRequest called with endpoint:', 'background: #ff6600; color: white; font-size: 14px; padding: 3px;', endpoint);
+  
   const token = getAuthToken();
+  const cacheHeaders = getCacheControlHeaders();
   
   const headers = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     ...(token && { Authorization: `Bearer ${token}` }),
+    ...cacheHeaders,
     ...options.headers,
   };
 
-  const response = await fetch(`${API_URL()}${endpoint}`, {
+  const apiUrl = API_URL();
+  // console.log('%c API URL in apiRequest:', 'background: #66ff00; color: black; font-size: 14px; padding: 3px;', apiUrl);
+  
+  const fullUrl = `${apiUrl}${endpoint}`;
+  // console.log('%c Full request URL:', 'background: #0066ff; color: white; font-size: 14px; padding: 3px;', fullUrl);
+
+  const response = await fetch(fullUrl, {
     ...options,
     headers,
     credentials: 'include',
     mode: 'cors',
   });
 
-  const data = await response.json().catch(() => null);
+  // console.log('%c API response status:', 'background: #ff0066; color: white; font-size: 14px; padding: 3px;', response.status, response.ok ? 'OK' : 'Failed');
+
+  const data = await response.json().catch(() => {
+    console.error('Failed to parse JSON response');
+    return null;
+  });
 
   if (!response.ok) {
-    throw new Error(data?.detail || 'API request failed');
+    const errorMessage = data?.detail || 'API request failed';
+    console.error('API request failed:', errorMessage);
+    throw new Error(errorMessage);
   }
 
+  // console.log('%c API request successful:', 'background: #00ff66; color: black; font-size: 14px; padding: 3px;', data);
   return data;
 }; 

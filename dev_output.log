@@ -1,0 +1,86 @@
+
+> figart-ai-app@0.1.0 dev
+> next dev
+
+Loading Next.js config...
+Environment variables: {
+  NEXT_PUBLIC_API_URL: 'http://192.168.8.115:8000',
+  NEXT_PUBLIC_FRONTEND_URL: 'http://192.168.8.115:3000'
+}
+ ⚠ Port 3000 is in use, trying 3001 instead.
+Loading Next.js config...
+Environment variables: {
+  NEXT_PUBLIC_API_URL: 'http://192.168.8.115:8000',
+  NEXT_PUBLIC_FRONTEND_URL: 'http://192.168.8.115:3000'
+}
+   ▲ Next.js 15.2.0
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.8.115:3001
+   - Environments: .env.local
+
+ ✓ Starting...
+Headers function executed
+ ✓ Ready in 2.5s
+ ⚠ Found a change in next.config.js. Restarting the server to apply the changes...
+
+
+
+================================================================================
+NEXT.JS CONFIG LOADING - THIS SHOULD BE VISIBLE IN THE CONSOLE
+================================================================================
+Environment variables: {
+  NEXT_PUBLIC_API_URL: 'http://192.168.8.115:8000',
+  NEXT_PUBLIC_FRONTEND_URL: 'http://192.168.8.115:3000'
+}
+================================================================================
+
+
+
+   ▲ Next.js 15.2.0
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.8.115:3001
+   - Environments: .env.local
+
+ ✓ Starting...
+
+
+
+================================================================================
+HEADERS FUNCTION EXECUTED - THIS SHOULD BE VISIBLE IN THE CONSOLE
+================================================================================
+
+
+
+ ✓ Ready in 2.9s
+ ⚠ Found a change in next.config.js. Restarting the server to apply the changes...
+
+
+
+================================================================================
+NEXT.JS CONFIG LOADING - THIS SHOULD BE VISIBLE IN THE CONSOLE
+================================================================================
+Environment variables: {
+  NEXT_PUBLIC_API_URL: 'http://192.168.8.115:8000',
+  NEXT_PUBLIC_FRONTEND_URL: 'http://192.168.8.115:3000'
+}
+================================================================================
+
+
+
+   ▲ Next.js 15.2.0
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.8.115:3001
+   - Environments: .env.local
+
+ ✓ Starting...
+
+
+
+================================================================================
+HEADERS FUNCTION EXECUTED - THIS SHOULD BE VISIBLE IN THE CONSOLE
+================================================================================
+
+
+
+ ✓ Ready in 4.7s
+[?25h

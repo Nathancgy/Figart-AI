@@ -6,6 +6,9 @@ import { apiRequest, getAuthToken } from '@/utils/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_URL, getPhotoUrl } from '@/utils/config';
 
+// Debug log to check if this file is being loaded
+// console.log('%c Community page component loaded', 'background: #ff0000; color: white; font-size: 16px; padding: 5px;');
+
 interface Post {
   id: number;
   photo_uuid: string;
@@ -15,6 +18,8 @@ interface Post {
 }
 
 export default function CommunityPage() {
+  // console.log('%c Community page rendered', 'background: #00ff00; color: black; font-size: 16px; padding: 5px;');
+  
   const { username } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
@@ -102,25 +107,26 @@ export default function CommunityPage() {
       
       // Get posts with sorting and pagination
       const currentPage = reset ? 0 : page;
+      
+      // Log the API URL directly
+      const apiUrl = API_URL();
+      
       const response = await apiRequest(`/posts/?sort_by=${sortMethod}&page=${currentPage}`);
       
       if (reset) {
         setPosts(response.posts);
       } else {
-        setPosts(prev => [...prev, ...response.posts]);
+        setPosts([...posts, ...response.posts]);
       }
       
-      // Check if there are more posts to load
       setHasMorePosts(response.pagination.page < response.pagination.pages - 1);
       setTotalPages(response.pagination.pages);
       
-      // If not resetting, increment the page for next load
       if (!reset) {
-        setPage(prev => prev + 1);
+        setPage(currentPage + 1);
       }
-    } catch (err) {
-      setError('Failed to load posts');
-      console.error('Error fetching posts:', err);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -294,11 +300,16 @@ export default function CommunityPage() {
       const formData = new FormData();
       formData.append('file', file);
 
+      // Import the cache control headers
+      const { getCacheControlHeaders } = await import('@/utils/config');
+      const cacheHeaders = getCacheControlHeaders();
+
       // Upload the photo and create post in one step
       const response = await fetch(`${API_URL()}/posts/create/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
+          ...cacheHeaders,
         },
         body: formData,
       });
@@ -492,6 +503,11 @@ export default function CommunityPage() {
                         src={getPhotoUrl(post.photo_uuid)}
                         alt={`Post ${post.id}`}
                         className="absolute inset-0 w-full h-full object-cover cursor-pointer"
+                        onError={(e) => {
+                          console.error(`Failed to load image for post ${post.id}`);
+                          // Set a fallback image to the SVG placeholder
+                          e.currentTarget.src = '/images/placeholder.svg';
+                        }}
                       />
                     </Link>
                 </div>
