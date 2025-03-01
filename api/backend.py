@@ -74,15 +74,6 @@ def login(username, password):
         return True
     return False
 
-def save_photo(file_name, user_id):
-    photo = Photo(internal_filename=file_name, user_id=user_id)
-    session.add(photo)
-    session.commit()
-    return photo.id
-
-def get_photo_loc(photo_id):
-    return session.query(Photo).filter_by(id=photo_id).first().internal_filename
-
 def create_post(photo_id, user_id):
     post = Post(photo_id=photo_id, user_id=user_id)
     session.add(post)

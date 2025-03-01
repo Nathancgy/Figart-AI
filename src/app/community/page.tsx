@@ -16,11 +16,32 @@ interface Post {
 export default function CommunityPage() {
   const { username } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sortDropdownRef = useRef<HTMLDivElement>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [likedPosts, setLikedPosts] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [likedPosts, setLikedPosts] = useState<Set<number>>(new Set());
+  const [sortMethod, setSortMethod] = useState<'recent' | 'likes'>('recent');
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
+        setShowSortDropdown(false);
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Clear error after 5 seconds
   useEffect(() => {
@@ -34,17 +55,17 @@ export default function CommunityPage() {
 
   // Fetch posts and user's liked posts when component mounts or username changes
   useEffect(() => {
-    fetchPosts();
+    fetchPosts(true);
     
     // Only fetch liked posts if user is logged in
     if (username) {
       fetchUserLikedPosts();
     } else {
       // Clear liked posts when user logs out
-      setLikedPosts(new Set());
+      setLikedPosts([]);
       localStorage.removeItem('likedPosts');
     }
-  }, [username]);
+  }, [username, sortMethod]);
 
   const fetchUserLikedPosts = async () => {
     if (!username) return;
@@ -52,9 +73,8 @@ export default function CommunityPage() {
     try {
       const response = await apiRequest('/users/liked-posts/');
       if (response && response.liked_posts) {
-        const likedPostsSet = new Set<number>(response.liked_posts as number[]);
-        setLikedPosts(likedPostsSet);
-        localStorage.setItem('likedPosts', JSON.stringify([...likedPostsSet]));
+        setLikedPosts(response.liked_posts as number[]);
+        localStorage.setItem('likedPosts', JSON.stringify(response.liked_posts));
       }
     } catch (err) {
       console.error('Error fetching liked posts:', err);
@@ -62,8 +82,7 @@ export default function CommunityPage() {
       const savedLikes = localStorage.getItem('likedPosts');
       if (savedLikes) {
         try {
-          const likedPostsArray = JSON.parse(savedLikes);
-          setLikedPosts(new Set<number>(likedPostsArray));
+          setLikedPosts(JSON.parse(savedLikes));
         } catch (e) {
           console.error('Error loading liked posts from localStorage', e);
         }
@@ -71,17 +90,188 @@ export default function CommunityPage() {
     }
   };
 
-  const fetchPosts = async () => {
+  const fetchPosts = async (reset: boolean = true) => {
     try {
-      setLoading(true);
-      // Get recent posts
-      const response = await apiRequest('/posts/recent/');
-      setPosts(response.posts);
+      if (reset) {
+        setLoading(true);
+        setPage(0);
+      } else {
+        setLoadingMore(true);
+      }
+      
+      // Get posts with sorting and pagination
+      const currentPage = reset ? 0 : page;
+      const response = await apiRequest(`/posts/?sort_by=${sortMethod}&page=${currentPage}`);
+      
+      if (reset) {
+        setPosts(response.posts);
+      } else {
+        setPosts(prev => [...prev, ...response.posts]);
+      }
+      
+      // Check if there are more posts to load
+      setHasMorePosts(response.pagination.page < response.pagination.pages - 1);
+      setTotalPages(response.pagination.pages);
+      
+      // If not resetting, increment the page for next load
+      if (!reset) {
+        setPage(prev => prev + 1);
+      }
     } catch (err) {
       setError('Failed to load posts');
       console.error('Error fetching posts:', err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  // Load specific page
+  const goToPage = (pageNumber: number) => {
+    if (pageNumber !== page && !loading && !loadingMore) {
+      setPage(pageNumber);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      // Fetch the selected page
+      try {
+        setLoading(true);
+        apiRequest(`/posts/?sort_by=${sortMethod}&page=${pageNumber}`)
+          .then(response => {
+            setPosts(response.posts);
+            setHasMorePosts(response.pagination.page < response.pagination.pages - 1);
+            setTotalPages(response.pagination.pages);
+          })
+          .catch(err => {
+            setError('Failed to load posts');
+            console.error('Error fetching posts:', err);
+          })
+          .finally(() => {
+            setLoading(false);
+          });
+      } catch (err) {
+        setError('Failed to load posts');
+        console.error('Error fetching posts:', err);
+        setLoading(false);
+      }
+    }
+  };
+
+  // Generate pagination items
+  const renderPaginationItems = () => {
+    const items = [];
+    const maxVisiblePages = 5; // Maximum number of page buttons to show
+    
+    // Always show first page
+    items.push(
+      <button
+        key="first"
+        onClick={() => goToPage(0)}
+        className={`px-3 py-1 rounded-md ${page === 0 ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+        disabled={loading}
+      >
+        1
+      </button>
+    );
+    
+    // If there are only 2 pages, just show page 1 and 2 without duplication
+    if (totalPages === 2) {
+      items.push(
+        <button
+          key="page2"
+          onClick={() => goToPage(1)}
+          className={`px-3 py-1 rounded-md ${page === 1 ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+          disabled={loading}
+        >
+          2
+        </button>
+      );
+      return items;
+    }
+    
+    // For more than 2 pages, continue with the regular logic
+    // Calculate range of pages to show
+    let startPage = Math.max(1, page - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages - 1, startPage + maxVisiblePages - 2);
+    
+    // Adjust start if we're near the end
+    if (endPage - startPage < maxVisiblePages - 2) {
+      startPage = Math.max(1, endPage - (maxVisiblePages - 2));
+    }
+    
+    // Add ellipsis after first page if needed
+    if (startPage > 1) {
+      items.push(
+        <span key="ellipsis1" className="px-2">
+          ...
+        </span>
+      );
+    }
+    
+    // Add page numbers
+    for (let i = startPage; i <= endPage; i++) {
+      items.push(
+        <button
+          key={i}
+          onClick={() => goToPage(i)}
+          className={`px-3 py-1 rounded-md ${page === i ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+          disabled={loading}
+        >
+          {i + 1}
+        </button>
+      );
+    }
+    
+    // Add ellipsis before last page if needed
+    if (endPage < totalPages - 1) {
+      items.push(
+        <span key="ellipsis2" className="px-2">
+          ...
+        </span>
+      );
+    }
+    
+    // Always show last page if there's more than one page
+    if (totalPages > 2) {
+      items.push(
+        <button
+          key="last"
+          onClick={() => goToPage(totalPages - 1)}
+          className={`px-3 py-1 rounded-md ${page === totalPages - 1 ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+          disabled={loading}
+        >
+          {totalPages}
+        </button>
+      );
+    }
+    
+    return items;
+  };
+
+  // Handle sort method change
+  const handleSortMethodChange = (method: 'recent' | 'likes') => {
+    if (method !== sortMethod) {
+      setSortMethod(method);
+      setShowSortDropdown(false);
+      
+      // Reset page to 0 and fetch with new sort method
+      setPage(0);
+      setLoading(true);
+      
+      apiRequest(`/posts/?sort_by=${method}&page=0`)
+        .then(response => {
+          setPosts(response.posts);
+          setHasMorePosts(response.pagination.page < response.pagination.pages - 1);
+          setTotalPages(response.pagination.pages);
+        })
+        .catch(err => {
+          setError('Failed to load posts');
+          console.error('Error fetching posts:', err);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else {
+      setShowSortDropdown(false);
     }
   };
 
@@ -140,22 +330,14 @@ export default function CommunityPage() {
 
     try {
       setError(null);
-      const isLiked = likedPosts.has(postId);
+      const isLiked = likedPosts.includes(postId);
       const endpoint = isLiked ? `/posts/${postId}/thumbs-down/` : `/posts/${postId}/thumbs-up/`;
       
       // Optimistically update UI
-      const newLikedPosts = new Set(likedPosts);
-      if (isLiked) {
-        newLikedPosts.delete(postId);
-        setPosts(posts.map(post => 
-          post.id === postId ? { ...post, thumbs_up: Math.max(0, post.thumbs_up - 1) } : post
-        ));
-      } else {
-        newLikedPosts.add(postId);
-        setPosts(posts.map(post => 
-          post.id === postId ? { ...post, thumbs_up: post.thumbs_up + 1 } : post
-        ));
-      }
+      const newLikedPosts = isLiked ? likedPosts.filter(id => id !== postId) : [...likedPosts, postId];
+      setPosts(posts.map(post => 
+        post.id === postId ? { ...post, thumbs_up: isLiked ? Math.max(0, post.thumbs_up - 1) : post.thumbs_up + 1 } : post
+      ));
       setLikedPosts(newLikedPosts);
       
       // Make API request
@@ -168,7 +350,7 @@ export default function CommunityPage() {
       }
       
       // Save to localStorage on success
-      localStorage.setItem('likedPosts', JSON.stringify([...newLikedPosts]));
+      localStorage.setItem('likedPosts', JSON.stringify(newLikedPosts));
       
     } catch (err) {
       console.error('Error liking post:', err);
@@ -224,19 +406,49 @@ export default function CommunityPage() {
         <div className="bg-white rounded-xl shadow-md p-6 mb-12">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Recent Photos</h2>
-              <p className="text-gray-500">Explore the latest uploads from our community</p>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {sortMethod === 'recent' ? 'Recent Photos' : 'Most Liked Photos'}
+              </h2>
+              <p className="text-gray-500">
+                {sortMethod === 'recent' 
+                  ? 'Explore the latest uploads from our community' 
+                  : 'Discover the most popular photos in our community'}
+              </p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="relative">
+              <div className="relative" ref={sortDropdownRef}>
                 <button
+                  onClick={() => setShowSortDropdown(!showSortDropdown)}
                   className="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors flex items-center"
                 >
-                  <span>Sort by: Recent</span>
+                  <span>Sort by: {sortMethod === 'recent' ? 'Recent' : 'Most Liked'}</span>
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 ml-2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                   </svg>
                 </button>
+                
+                {showSortDropdown && (
+                  <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                    <button
+                      onClick={() => {
+                        handleSortMethodChange('recent');
+                        setShowSortDropdown(false);
+                      }}
+                      className={`block w-full text-left px-4 py-2 hover:bg-gray-100 ${sortMethod === 'recent' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700'}`}
+                    >
+                      Recent
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleSortMethodChange('likes');
+                        setShowSortDropdown(false);
+                      }}
+                      className={`block w-full text-left px-4 py-2 hover:bg-gray-100 ${sortMethod === 'likes' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700'}`}
+                    >
+                      Most Liked
+                    </button>
+                  </div>
+                )}
               </div>
               {username && (
                 <div className="relative">
@@ -290,9 +502,9 @@ export default function CommunityPage() {
                       <button 
                         onClick={() => handleLike(post.id)}
                         className="flex items-center text-gray-500 hover:text-red-500 transition-colors focus:outline-none"
-                        aria-label={likedPosts.has(post.id) ? "Unlike post" : "Like post"}
+                        aria-label={likedPosts.includes(post.id) ? "Unlike post" : "Like post"}
                       >
-                        {likedPosts.has(post.id) ? (
+                        {likedPosts.includes(post.id) ? (
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-1 text-red-500">
                             <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
                           </svg>
@@ -325,6 +537,35 @@ export default function CommunityPage() {
           )}
         </div>
       </div>
+      {totalPages > 1 && (
+        <div className="flex justify-center my-8">
+          <div className="inline-flex items-center gap-2 bg-white p-2 rounded-lg shadow">
+            <button
+              onClick={() => goToPage(Math.max(0, page - 1))}
+              disabled={page === 0 || loading}
+              className="px-3 py-1 rounded-md bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-white"
+              aria-label="Previous page"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+              </svg>
+            </button>
+            
+            {renderPaginationItems()}
+            
+            <button
+              onClick={() => goToPage(Math.min(totalPages - 1, page + 1))}
+              disabled={page === totalPages - 1 || loading}
+              className="px-3 py-1 rounded-md bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-white"
+              aria-label="Next page"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

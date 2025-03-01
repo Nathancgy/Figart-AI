@@ -98,9 +98,27 @@ async def create_post(file: UploadFile = File(...), current_user: str = Depends(
     session.commit()
     return {"message": "Post created successfully", "post_id": p.id}
 
-@app.get("/posts/recent/")
-async def get_recent_posts():
-    posts = session.query(Post).order_by(Post.created_at.desc()).limit(20).all()
+@app.get("/posts/")
+async def get_posts(sort_by: str = "recent", page: int = 0, limit: int = 18):
+    """
+    Get posts with sorting and pagination
+    
+    Parameters:
+    - sort_by: 'recent' (default) or 'likes'
+    - page: Page number (0-indexed)
+    - limit: Number of posts per page (default 18)
+    """
+    # Base query
+    query = session.query(Post)
+    
+    # Apply sorting
+    if sort_by == "likes":
+        query = query.order_by(Post.thumbs_up.desc(), Post.created_at.desc())
+    else:  # Default to recent
+        query = query.order_by(Post.created_at.desc())
+    
+    # Apply pagination
+    posts = query.offset(page * limit).limit(limit).all()
     
     # Format posts to include username instead of user_id
     formatted_posts = []
@@ -116,7 +134,35 @@ async def get_recent_posts():
             "thumbs_up": post.thumbs_up
         })
     
-    return {"posts": formatted_posts}
+    # Get total count for pagination info
+    total_posts = session.query(Post).count()
+    
+    return {
+        "posts": formatted_posts,
+        "pagination": {
+            "total": total_posts,
+            "page": page,
+            "limit": limit,
+            "pages": (total_posts + limit - 1) // limit  # Ceiling division
+        }
+    }
+
+# Keep these endpoints for backward compatibility but mark as deprecated
+@app.get("/posts/recent/")
+async def get_recent_posts():
+    """
+    DEPRECATED: Use /posts/?sort_by=recent instead
+    """
+    posts_response = await get_posts(sort_by="recent", page=0, limit=18)
+    return {"posts": posts_response["posts"]}
+
+@app.get("/posts/all/{paging}")
+async def get_all_posts(paging: int):
+    """
+    DEPRECATED: Use /posts/?page={paging} instead
+    """
+    posts_response = await get_posts(sort_by="recent", page=paging, limit=18)
+    return {"posts": posts_response["posts"]}
 
 @app.get("/posts/{post_id}/")
 async def get_post(post_id: int):
@@ -139,30 +185,31 @@ async def get_post(post_id: int):
     
     return {"post": formatted_post}
 
-@app.get("/posts/all/{paging}")
-async def get_all_posts(paging: int):
-    posts = session.query(Post).order_by(Post.created_at.desc()).offset(paging * 20).limit(20).all()
+@app.get("/users/{user_id}/posts/")
+async def get_user_posts(user_id: int, current_user: str = Depends(get_current_user)):
+    # Get the authenticated user's ID
+    auth_user = session.query(User).filter_by(username=current_user).first()
+    if not auth_user:
+        raise HTTPException(status_code=404, detail="Authenticated user not found")
+    
+    # Check if the requested user_id matches the authenticated user's ID
+    if user_id != auth_user.id:
+        raise HTTPException(status_code=403, detail="You do not have permission to access this user's posts")
+    
+    posts = session.query(Post).filter_by(user_id=user_id).order_by(Post.created_at.desc()).all()
     
     # Format posts to include username instead of user_id
     formatted_posts = []
     for post in posts:
-        user = session.query(User).filter_by(id=post.user_id).first()
-        username = user.username if user else "Unknown User"
-        
         formatted_posts.append({
             "id": post.id,
             "photo_uuid": post.photo_uuid,
-            "user_id": username,  # Use username instead of user_id
+            "user_id": auth_user.username,  # Use username instead of user_id
             "created_at": post.created_at.isoformat(),
             "thumbs_up": post.thumbs_up
         })
     
     return {"posts": formatted_posts}
-
-@app.get("/users/{user_id}/posts/")
-async def get_user_posts(user_id: int):
-    posts = session.query(Post).filter_by(user_id=user_id).order_by(Post.created_at.desc()).all()
-    return {"posts": posts}
 
 @app.post("/posts/{post_id}/thumbs-up/")
 async def thumbs_up_post(post_id: int, current_user: str = Depends(get_current_user)):
