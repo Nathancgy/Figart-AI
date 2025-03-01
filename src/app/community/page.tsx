@@ -193,7 +193,7 @@ export default function CommunityPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {error && (
           <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
@@ -213,10 +213,10 @@ export default function CommunityPage() {
         )}
         
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl sm:tracking-tight lg:text-6xl">
+          <h1 className="text-4xl font-extrabold text-white sm:text-5xl sm:tracking-tight lg:text-6xl">
             Photography Community
           </h1>
-          <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-500">
+          <p className="mt-4 max-w-2xl mx-auto text-xl text-indigo-200">
             Share your photos, get feedback, and be inspired by other photographers.
           </p>
         </div>
@@ -227,25 +227,37 @@ export default function CommunityPage() {
               <h2 className="text-2xl font-bold text-gray-900">Recent Photos</h2>
               <p className="text-gray-500">Explore the latest uploads from our community</p>
             </div>
-            {username && (
+            <div className="flex items-center gap-4">
               <div className="relative">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleUpload}
-                  accept="image/*"
-                  className="hidden"
-                  aria-label="Upload photo"
-                />
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-indigo-400"
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors flex items-center"
                 >
-                  {uploading ? 'Uploading...' : 'Post a Picture'}
+                  <span>Sort by: Recent</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 ml-2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
                 </button>
               </div>
-            )}
+              {username && (
+                <div className="relative">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleUpload}
+                    accept="image/*"
+                    className="hidden"
+                    aria-label="Upload photo"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-indigo-400"
+                  >
+                    {uploading ? 'Uploading...' : 'Post a Picture'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           
           {loading ? (
@@ -262,15 +274,19 @@ export default function CommunityPage() {
               {posts.map((post) => (
                 <div key={post.id} className="border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
                   <div className="relative pb-[75%] bg-gray-100">
-                    <img
-                      src={`http://localhost:8000/photos/${post.photo_uuid}`}
-                      alt={`Post ${post.id}`}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
+                    <Link href={`/posts/${post.id}`}>
+                      <img
+                        src={`http://localhost:8000/photos/${post.photo_uuid}`}
+                        alt={`Post ${post.id}`}
+                        className="absolute inset-0 w-full h-full object-cover cursor-pointer"
+                      />
+                    </Link>
                   </div>
                   <div className="p-4">
                     <div className="flex justify-between items-start">
-                      <h3 className="font-bold text-lg">Post #{post.id}</h3>
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-gray-700">By: {post.user_id}</span>
+                      </div>
                       <button 
                         onClick={() => handleLike(post.id)}
                         className="flex items-center text-gray-500 hover:text-red-500 transition-colors focus:outline-none"
@@ -287,9 +303,6 @@ export default function CommunityPage() {
                         )}
                         <span>{post.thumbs_up}</span>
                       </button>
-                    </div>
-                    <div className="flex items-center mt-4">
-                      <span className="text-sm font-medium text-gray-700">By: {post.user_id}</span>
                     </div>
                     <div className="mt-4 flex justify-between">
                       <div className="text-sm text-gray-500">

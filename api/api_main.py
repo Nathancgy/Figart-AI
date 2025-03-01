@@ -30,6 +30,7 @@ app.add_middleware(
 from fastapi import File, UploadFile
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
+from fastapi import Request
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
@@ -83,11 +84,16 @@ async def create_post(file: UploadFile = File(...), current_user: str = Depends(
     if not file.content_type.startswith('image/'):
         raise HTTPException(status_code=400, detail="File type not supported")
     
+    # Get the user ID from the username
+    user = session.query(User).filter_by(username=current_user).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
     filename = uuid.uuid4().hex + "." + file.filename.split(".")[-1]
     file_location = f"uploads/{filename}"
     with open(file_location, "wb") as buffer:
         buffer.write(await file.read())
-    p = Post(photo_uuid=filename, user_id=current_user)
+    p = Post(photo_uuid=filename, user_id=user.id)
     session.add(p)
     session.commit()
     return {"message": "Post created successfully", "post_id": p.id}
@@ -95,19 +101,63 @@ async def create_post(file: UploadFile = File(...), current_user: str = Depends(
 @app.get("/posts/recent/")
 async def get_recent_posts():
     posts = session.query(Post).order_by(Post.created_at.desc()).limit(20).all()
-    return {"posts": posts}
+    
+    # Format posts to include username instead of user_id
+    formatted_posts = []
+    for post in posts:
+        user = session.query(User).filter_by(id=post.user_id).first()
+        username = user.username if user else "Unknown User"
+        
+        formatted_posts.append({
+            "id": post.id,
+            "photo_uuid": post.photo_uuid,
+            "user_id": username,  # Use username instead of user_id
+            "created_at": post.created_at.isoformat(),
+            "thumbs_up": post.thumbs_up
+        })
+    
+    return {"posts": formatted_posts}
 
 @app.get("/posts/{post_id}/")
 async def get_post(post_id: int):
     post = session.query(Post).filter_by(id=post_id).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post doesn't exist")
-    return {"post": post}
+    
+    # Get the username instead of user_id
+    user = session.query(User).filter_by(id=post.user_id).first()
+    username = user.username if user else "Unknown User"
+    
+    # Format the post data
+    formatted_post = {
+        "id": post.id,
+        "photo_uuid": post.photo_uuid,
+        "user_id": username,  # Use username instead of user_id
+        "created_at": post.created_at.isoformat(),
+        "thumbs_up": post.thumbs_up
+    }
+    
+    return {"post": formatted_post}
 
 @app.get("/posts/all/{paging}")
 async def get_all_posts(paging: int):
     posts = session.query(Post).order_by(Post.created_at.desc()).offset(paging * 20).limit(20).all()
-    return {"posts": posts}
+    
+    # Format posts to include username instead of user_id
+    formatted_posts = []
+    for post in posts:
+        user = session.query(User).filter_by(id=post.user_id).first()
+        username = user.username if user else "Unknown User"
+        
+        formatted_posts.append({
+            "id": post.id,
+            "photo_uuid": post.photo_uuid,
+            "user_id": username,  # Use username instead of user_id
+            "created_at": post.created_at.isoformat(),
+            "thumbs_up": post.thumbs_up
+        })
+    
+    return {"posts": formatted_posts}
 
 @app.get("/users/{user_id}/posts/")
 async def get_user_posts(user_id: int):
@@ -160,17 +210,46 @@ async def delete_post(post_id: int, current_user: str = Depends(get_current_user
     return {"message": "Post deleted successfully"}
 
 @app.post("/posts/{post_id}/comment/add/")
-async def comment_post(post_id: int, comment: str, current_user: str = Depends(get_current_user)):
+async def comment_post(post_id: int, request: Request, current_user: str = Depends(get_current_user)):
+    try:
+        body = await request.json()
+        comment = body.get("comment")
+    except:
+        comment = None
+    
+    if not comment:
+        raise HTTPException(status_code=400, detail="Comment text is required")
+    
+    # Get user ID from username
+    user = session.query(User).filter_by(username=current_user).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
     post = get_post_or_404(post_id)
-    comment = Comment(post_id=post_id, comment=comment, user_id=current_user)
-    session.add(comment)
+    comment_obj = Comment(post_id=post_id, content=comment, user_id=user.id)
+    session.add(comment_obj)
     session.commit()
-    return {"message": "Comment added successfully", "comment_id": comment.id}
+    return {"message": "Comment added successfully", "comment_id": comment_obj.id}
 
 @app.get("/posts/{post_id}/comments/")
 async def get_post_comments(post_id: int):
-    comments = session.query(Comment).filter_by(post_id=post_id).all()
-    return {"comments": comments}
+    comments = session.query(Comment).filter_by(post_id=post_id).order_by(Comment.created_at.desc()).all()
+    
+    # Format comments to include username instead of user_id
+    formatted_comments = []
+    for comment in comments:
+        user = session.query(User).filter_by(id=comment.user_id).first()
+        username = user.username if user else "Unknown User"
+        
+        formatted_comments.append({
+            "id": comment.id,
+            "post_id": comment.post_id,
+            "user_id": username,  # Use username instead of user_id
+            "content": comment.content,
+            "created_at": comment.created_at.isoformat()
+        })
+    
+    return {"comments": formatted_comments}
 
 @app.post("/posts/{post_id}/comment/{comment_id}/delete/")
 async def delete_comment(post_id: int, comment_id: int, current_user: str = Depends(get_current_user)):
