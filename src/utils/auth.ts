@@ -132,27 +132,41 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
   // Determine if this is a cross-origin request
   const isCrossOrigin = new URL(fullUrl).origin !== window.location.origin;
   
-  const response = await fetch(fullUrl, {
-    ...options,
-    headers,
-    // Use 'include' for cross-origin requests, otherwise 'same-origin'
-    credentials: isCrossOrigin ? 'include' : 'same-origin',
-    mode: 'cors',
-  });
+  try {
+    const response = await fetch(fullUrl, {
+      ...options,
+      headers,
+      // Use 'include' for cross-origin requests, otherwise 'same-origin'
+      credentials: isCrossOrigin ? 'include' : 'same-origin',
+      mode: 'cors',
+    });
 
-  // console.log('%c API response status:', 'background: #ff0066; color: white; font-size: 14px; padding: 3px;', response.status, response.ok ? 'OK' : 'Failed');
+    // console.log('%c API response status:', 'background: #ff0066; color: white; font-size: 14px; padding: 3px;', response.status, response.ok ? 'OK' : 'Failed');
 
-  const data = await response.json().catch(() => {
-    console.error('Failed to parse JSON response');
-    return null;
-  });
+    // Check for unauthorized response (401)
+    if (response.status === 401) {
+      console.error('Unauthorized access. Logging out...');
+      // Log out the user immediately
+      logout(true);
+      throw new Error('Session expired. Please log in again.');
+    }
 
-  if (!response.ok) {
-    const errorMessage = data?.detail || 'API request failed';
-    console.error('API request failed:', errorMessage);
-    throw new Error(errorMessage);
+    const data = await response.json().catch(() => {
+      console.error('Failed to parse JSON response');
+      return null;
+    });
+
+    if (!response.ok) {
+      const errorMessage = data?.detail || 'API request failed';
+      console.error('API request failed:', errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    // console.log('%c API request successful:', 'background: #00ff66; color: black; font-size: 14px; padding: 3px;', data);
+    return data;
+  } catch (error) {
+    // If the error is related to unauthorized access, it's already handled above
+    // For other errors, just rethrow them
+    throw error;
   }
-
-  // console.log('%c API request successful:', 'background: #00ff66; color: black; font-size: 14px; padding: 3px;', data);
-  return data;
 }; 

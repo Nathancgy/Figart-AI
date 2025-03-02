@@ -41,7 +41,7 @@ class Post(Base):
     comments = relationship("Comment", cascade="all, delete-orphan", backref="post")
 
     def __repr__(self):
-        return f"<Post(id={self.id}, photo_id={self.photo_id}, user_id={self.user_id}, created_at={self.created_at}, thumbs_up={self.thumbs_up})>"
+        return f"<Post(id={self.id}, photo_id={self.photo_uuid}, user_id={self.user_id}, created_at={self.created_at.isoformat()}, updated_at={self.updated_at.isoformat()}, thumbs_up={self.thumbs_up})>"
 
 class Comment(Base):
     __tablename__ = 'comments'

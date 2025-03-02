@@ -9,7 +9,7 @@ from backend import (
     utcnow
 )
 from settings import *
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 import jwt
 import os
 import os.path
@@ -43,6 +43,7 @@ from fastapi import File, UploadFile
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Request
+from dateutil import parser
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
@@ -400,256 +401,29 @@ async def check_posts_changed(since: str = Query(..., description="ISO format ti
     - since: The parsed timestamp used for comparison
     """
     try:
-        # Parse the timestamp, ensuring proper timezone handling
-        if since.endswith('Z'):
-            # Convert from UTC to local time by adding 8 hours (for Asia/Shanghai)
-            since_datetime = datetime.fromisoformat(since.replace('Z', '+00:00'))
-            # Make it timezone-naive for comparison with database timestamps
-            since_datetime_local = since_datetime.replace(tzinfo=None)
-            print(f"Parsed UTC timestamp: {since_datetime}, converted to local: {since_datetime_local}")
-        else:
-            # If no timezone specified, assume it's already in local time
-            since_datetime_local = datetime.fromisoformat(since)
-            print(f"Parsed local timestamp: {since_datetime_local}")
+        since_datetime = parser.isoparse(since)
+        if since_datetime.tzinfo is None:
+            since_datetime = since_datetime.replace(tzinfo=timezone.utc)
         
-        # Get the current time (already in local timezone)
-        current_time = utcnow()
-        # Make sure current_time is timezone-naive for comparison
-        if current_time.tzinfo is not None:
-            current_time = current_time.replace(tzinfo=None)
-        print(f"Current time: {current_time}")
-        
-        # Ensure the timestamp is not in the future
-        if since_datetime_local > current_time:
-            print(f"Warning: Provided timestamp {since_datetime_local} is in the future. Using current time {current_time} instead.")
-            since_datetime_local = current_time
-        
-        print(f"Using timestamp for query: {since_datetime_local}")
-        
-        # For debugging, let's print all posts in the database
-        all_posts = session.query(Post).all()
-        print(f"Total posts in database: {len(all_posts)}")
-        for post in all_posts:
-            print(f"Post {post.id}: created_at={post.created_at}, updated_at={post.updated_at}, thumbs_up={post.thumbs_up}")
-        
-        # Get all posts that might have changed since the timestamp
-        all_posts_query = session.query(Post).filter(
-            # Either created after the timestamp
-            (Post.created_at > since_datetime_local) |
-            # Or updated after the timestamp (and created before or at the timestamp)
-            ((Post.updated_at > since_datetime_local) & (Post.created_at <= since_datetime_local))
-        )
-        
-        all_changed_posts = all_posts_query.all()
-        print(f"Total changed posts: {len(all_changed_posts)}")
-        
-        # Identify new posts (created after the timestamp)
-        new_posts = [post for post in all_changed_posts if post.created_at > since_datetime_local]
-        new_post_ids = [post.id for post in new_posts]
-        
-        # Identify updated posts (updated after the timestamp but created before or at the timestamp)
-        updated_posts = [post for post in all_changed_posts if post.updated_at > since_datetime_local and post.created_at <= since_datetime_local]
-        updated_post_ids = [post.id for post in updated_posts]
-        
-        # For debugging
-        if new_posts:
-            for post in new_posts:
-                print(f"New post: id={post.id}, created_at={post.created_at}, updated_at={post.updated_at}")
-        else:
-            print("No new posts found")
-        
-        if updated_posts:
-            for post in updated_posts:
-                print(f"Updated post: id={post.id}, created_at={post.created_at}, updated_at={post.updated_at}")
-        else:
-            print("No updated posts found")
-        
-        # Determine if anything has changed
-        changed = len(new_post_ids) > 0 or len(updated_post_ids) > 0
-        
-        return {
-            "changed": changed,
-            "new_posts": new_post_ids,
-            "updated_posts": updated_post_ids,
-            "since": since_datetime_local.isoformat()
-        }
-    except Exception as e:
-        # Log the error for debugging
-        print(f"Error in check_posts_changed: {str(e)}")
-        # Return a default response instead of an error
-        return {
-            "changed": False,
-            "new_posts": [],
-            "updated_posts": [],
-            "error": str(e)
-        }
+        # Convert to UTC+8 (Asia/Shanghai timezone)
+        shanghai_tz = timezone(timedelta(hours=8))
+        since_datetime = since_datetime.astimezone(shanghai_tz)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
+    # Select all posts with created_time >= since_datetime
+    new_posts = session.query(Post).filter(Post.created_at >= since_datetime).all()
+    changed_posts = session.query(Post).filter(Post.updated_at >= since_datetime).all()
 
-# Initialize YOLOv8 model with better error handling
-try:
-    print("Initializing YOLOv8 model...")
-    yolo_model = YOLO("yolov8n.pt")  # Using the nano model for faster processing
-    print("YOLOv8 model initialized successfully")
-except Exception as e:
-    print(f"Error initializing YOLOv8 model: {str(e)}")
-    # We'll initialize it as None and check for it in the endpoint
-    yolo_model = None
-
-@app.post("/api/detect-objects/")
-async def detect_objects(file: UploadFile = File(...)):
-    """
-    Analyze an image with YOLO to detect objects and suggest an optimal frame.
-    Returns boxes of detected objects and a suggested frame.
-    """
-    try:
-        # Check if model was successfully initialized
-        if yolo_model is None:
-            raise HTTPException(status_code=500, detail="YOLOv8 model could not be initialized. Please try again later.")
-            
-        # Validate file type
-        print(f"Processing file: {file.filename}, content_type: {file.content_type}")
-        if not file.content_type.startswith('image/'):
-            raise HTTPException(status_code=400, detail="Only image files are accepted")
-            
-        # Supported image formats
-        supported_formats = ['image/jpeg', 'image/jpg', 'image/png']
-        if file.content_type not in supported_formats:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Unsupported image format: {file.content_type}. Please use JPEG or PNG images."
-            )
-            
-        # Read the uploaded image
-        contents = await file.read()
-        print(f"Read {len(contents)} bytes of data")
-        
-        # Convert to numpy array
-        nparr = np.frombuffer(contents, np.uint8)
-        print(f"Converted to numpy array of shape: {nparr.shape}")
-        
-        # Check for empty image
-        if len(nparr) == 0:
-            raise HTTPException(status_code=400, detail="Empty image file received")
-            
-        # Decode image
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if img is None:
-            print("Failed to decode image")
-            raise HTTPException(status_code=400, detail="Could not decode image. Please try a different image format.")
-        
-        print(f"Decoded image of shape: {img.shape}")
-        
-        # Keep a copy of the original image for frame suggestion
-        original_img = img.copy()
-        
-        # Run YOLOv8 inference on the image
-        print("Running YOLOv8 inference...")
-        try:
-            results = yolo_model(img)
-            print(f"YOLOv8 inference completed successfully")
-        except Exception as yolo_err:
-            print(f"YOLOv8 inference error: {str(yolo_err)}")
-            raise HTTPException(status_code=500, detail=f"YOLOv8 processing error: {str(yolo_err)}")
-        
-        # Get the detection results
-        detections = []
-        for r in results:
-            print(f"Processing detection results: {len(r.boxes)} boxes found")
-            boxes = r.boxes
-            for box in boxes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-                confidence = float(box.conf[0])
-                cls = int(box.cls[0])
-                class_name = r.names[cls]
-                
-                detections.append({
-                    "box": [x1, y1, x2, y2],
-                    "confidence": confidence,
-                    "class": class_name
-                })
-        
-        print(f"Processed {len(detections)} detections")
-        
-        # Draw boxes on the image for visualization
-        for det in detections:
-            x1, y1, x2, y2 = det["box"]
-            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(img, f"{det['class']} {det['confidence']:.2f}", 
-                       (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        
-        # Calculate a suggested frame based on detected objects
-        print("Calculating suggested frame")
-        suggested_frame = calculate_suggested_frame(detections, original_img)
-        print(f"Suggested frame: {suggested_frame}")
-        
-        # Convert the processed image to base64 for response
-        print("Encoding image to base64")
-        try:
-            _, buffer = cv2.imencode('.jpg', img)
-            img_base64 = base64.b64encode(buffer).decode('utf-8')
-            print(f"Encoded image to base64, length: {len(img_base64)}")
-        except Exception as enc_err:
-            print(f"Error encoding image to base64: {str(enc_err)}")
-            raise HTTPException(status_code=500, detail=f"Image encoding error: {str(enc_err)}")
-        
-        # Prepare and return response
-        response_data = {
-            "detected_objects": detections,
-            "boxed_image": img_base64,
-            "suggested_frame": suggested_frame
-        }
-        print("Returning successful response")
-        return JSONResponse(response_data)
-        
-    except HTTPException as he:
-        # Re-raise HTTP exceptions
-        print(f"HTTP Exception: {he.detail}")
-        raise
-    except Exception as e:
-        # Log the full error and traceback
-        import traceback
-        error_traceback = traceback.format_exc()
-        print(f"Unexpected error in detect_objects: {str(e)}")
-        print(f"Traceback: {error_traceback}")
-        raise HTTPException(status_code=500, detail=f"Image processing error: {str(e)}")
-
-
-def calculate_suggested_frame(detections: List[Dict], image: np.ndarray) -> Dict[str, int]:
-    """
-    Calculate the optimal frame based on detected objects.
-    """
-    height, width = image.shape[:2]
+    new_post_ids = [post.id for post in new_posts]
+    updated_post_ids = [post.id for post in changed_posts]
+    total_updates = len(set(updated_post_ids + new_post_ids))
     
-    # Default frame dimensions (mobile aspect ratio)
-    frame_width = 375
-    frame_height = 667
-    
-    # If no objects detected, center the frame
-    if not detections:
-        frame_x = max(0, (width - frame_width) // 2)
-        frame_y = max(0, (height - frame_height) // 2)
-        return {"x": frame_x, "y": frame_y, "width": frame_width, "height": frame_height}
-    
-    # Calculate bounding box that contains all detected objects
-    # (with some margin)
-    margin = 50  # pixels of margin
-    
-    all_boxes = [d["box"] for d in detections]
-    min_x = max(0, min([box[0] for box in all_boxes]) - margin)
-    min_y = max(0, min([box[1] for box in all_boxes]) - margin)
-    max_x = min(width, max([box[2] for box in all_boxes]) + margin)
-    max_y = min(height, max([box[3] for box in all_boxes]) + margin)
-    
-    # Calculate center of this bounding box
-    center_x = (min_x + max_x) // 2
-    center_y = (min_y + max_y) // 2
-    
-    # Calculate frame position to center around the objects
-    frame_x = max(0, min(width - frame_width, center_x - frame_width // 2))
-    frame_y = max(0, min(height - frame_height, center_y - frame_height // 2))
+    changed = len(new_post_ids) > 0 or len(updated_post_ids) > 0
     
     return {
-        "x": frame_x,
-        "y": frame_y,
-        "width": frame_width,
-        "height": frame_height
+        "changed": changed,
+        "new_posts": new_post_ids,
+        "updated_posts": updated_post_ids,
+        "total_updates": total_updates,
+        "since": since_datetime.isoformat()
     }

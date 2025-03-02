@@ -39,10 +39,13 @@ export default function CommunityPage() {
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [totalPages, setTotalPages] = useState(0);
-  const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [newPostsCount, setNewPostsCount] = useState(0);
   const lastLikesRefreshRef = useRef<Date>(new Date());
+  const [lastCheckTime, setLastCheckTime] = useState<Date>(new Date());
+  const [hasChanges, setHasChanges] = useState(false);
+  const [newPostsCount, setNewPostsCount] = useState(0);
+  const [updatedPostsCount, setUpdatedPostsCount] = useState(0);
+  const [totalChangesCount, setTotalChangesCount] = useState(0);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -58,6 +61,49 @@ export default function CommunityPage() {
     };
   }, []);
 
+  // Poll for changes every 15 seconds
+  useEffect(() => {
+    const checkForChanges = async () => {
+      try {
+        // Format the date as ISO string for the API
+        const isoTime = lastCheckTime.toISOString();
+        console.log(isoTime);
+        
+        // Call the /posts/changed endpoint
+        const response = await apiRequest(`/posts/changed?since=${isoTime}`);
+        setLastCheckTime(new Date());
+        if (response && (response.new_posts.length > 0 || response.updated_posts.length > 0)) {
+          setHasChanges(true);
+          setNewPostsCount(response.new_posts.length);
+          setUpdatedPostsCount(response.updated_posts.length);
+          
+          // Calculate total unique changes by combining arrays and removing duplicates
+          // First, extract just the post IDs from the objects
+          const newPostIds = response.new_posts.map((post: PostIdObject) => post.id);
+          const updatedPostIds = response.updated_posts.map((post: PostIdObject) => post.id);
+          
+          // Combine arrays and use Set to remove duplicates
+          const uniqueChanges = new Set([...newPostIds, ...updatedPostIds]);
+          setTotalChangesCount(uniqueChanges.size);
+          
+          console.log(`Changes detected: ${response.new_posts.length} new posts, ${response.updated_posts.length} updated posts, ${uniqueChanges.size} total unique changes`);
+        }
+      } catch (error) {
+        console.error('Error checking for changes:', error);
+      }
+    };
+    
+    // Set up polling interval (15 seconds = 15000 ms)
+    pollingIntervalRef.current = setInterval(checkForChanges, 15000);
+    
+    // Clean up interval on component unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [lastCheckTime]);
+
   // Clear error after 5 seconds
   useEffect(() => {
     if (error) {
@@ -68,34 +114,37 @@ export default function CommunityPage() {
     }
   }, [error]);
 
-  // Function to load new posts and merge them with existing posts
-  const loadNewPosts = async (refreshPage: boolean = false) => {
-    if (newPostsCount === 0) return;
-    
+  // Function to handle refreshing the page when changes are detected
+  const handleRefresh = async () => {
     try {
-      setIsRefreshing(true);
+      setLoading(true);
       
-      if (refreshPage) {
-        console.log('Refreshing page to show new posts');
-        // Reset the new posts count and update the last refresh time
-        setNewPostsCount(0);
-        setLastRefreshTime(new Date());
-        // Trigger a full page refresh by fetching posts
-        await fetchPosts(true);
-      } else {
-        console.log('Acknowledging new posts without loading them');
-        // Simply reset the new posts count and update the last refresh time
-        // without actually loading any new posts
-        setNewPostsCount(0);
-        setLastRefreshTime(new Date());
-      }
+      // Reset change indicators
+      setHasChanges(false);
+      setNewPostsCount(0);
+      setUpdatedPostsCount(0);
+      setTotalChangesCount(0);
       
+      // Update the last check time to now
+      setLastCheckTime(new Date());
+      
+      // Fetch posts with the current sort method and page
+      await fetchPosts(true);
     } catch (error) {
-      console.error('Error acknowledging new posts:', error);
-      setError('Failed to acknowledge new posts. Please try again.');
+      console.error('Error refreshing posts:', error);
+      setError('Failed to refresh posts. Please try again.');
     } finally {
-      setIsRefreshing(false);
+      setLoading(false);
     }
+  };
+
+  // Function to dismiss changes notification without refreshing
+  const dismissChanges = () => {
+    setHasChanges(false);
+    setNewPostsCount(0);
+    setUpdatedPostsCount(0);
+    setTotalChangesCount(0);
+    setLastCheckTime(new Date());
   };
 
   // Fetch posts and user's liked posts when component mounts or username changes
@@ -147,8 +196,6 @@ export default function CommunityPage() {
       if (reset) {
         setLoading(true);
         setPage(0);
-        setNewPostsCount(0);
-        setLastRefreshTime(new Date());
       } else {
         setLoadingMore(true);
       }
@@ -173,6 +220,15 @@ export default function CommunityPage() {
       if (!reset) {
         setPage(prevPage => prevPage + 1);
       }
+      
+      // Reset change indicators
+      setHasChanges(false);
+      setNewPostsCount(0);
+      setUpdatedPostsCount(0);
+      setTotalChangesCount(0);
+      
+      // Update the last check time to now
+      setLastCheckTime(new Date());
       
       // Also refresh liked posts when fetching posts (but only if user is logged in)
       if (username) {
@@ -202,6 +258,15 @@ export default function CommunityPage() {
             setPosts(response.posts);
             setHasMorePosts(response.pagination.page < response.pagination.pages - 1);
             setTotalPages(response.pagination.pages);
+            
+            // Reset change indicators
+            setHasChanges(false);
+            setNewPostsCount(0);
+            setUpdatedPostsCount(0);
+            setTotalChangesCount(0);
+            
+            // Update the last check time to now
+            setLastCheckTime(new Date());
             
             // Also refresh liked posts when changing pages (but only if user is logged in)
             if (username) {
@@ -334,6 +399,15 @@ export default function CommunityPage() {
           setHasMorePosts(response.pagination.page < response.pagination.pages - 1);
           setTotalPages(response.pagination.pages);
           
+          // Reset change indicators
+          setHasChanges(false);
+          setNewPostsCount(0);
+          setUpdatedPostsCount(0);
+          setTotalChangesCount(0);
+          
+          // Update the last check time to now
+          setLastCheckTime(new Date());
+          
           // Also refresh liked posts when changing sort method (but only if user is logged in)
           if (username) {
             // Update the lastLikesRefresh reference to avoid unnecessary refreshes
@@ -408,6 +482,15 @@ export default function CommunityPage() {
       // Refresh the posts list
       await fetchPosts();
       
+      // Reset change indicators
+      setHasChanges(false);
+      setNewPostsCount(0);
+      setUpdatedPostsCount(0);
+      setTotalChangesCount(0);
+      
+      // Update the last check time to now
+      setLastCheckTime(new Date());
+      
       // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -477,7 +560,44 @@ export default function CommunityPage() {
 
   return (
     <div className="min-h-screen py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {hasChanges && (
+        <div className="fixed top-20 left-0 right-0 z-50 bg-gradient-to-r from-blue-50 to-indigo-100 border-b border-indigo-500 text-indigo-800 px-4 py-3 shadow-md animate-pulse-subtle" role="alert">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between">
+              <div className="flex items-center mb-2 sm:mb-0">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-indigo-600 flex-shrink-0">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                </svg>
+                <span className="block font-medium">
+                  {totalChangesCount > 0 ? (
+                    `${totalChangesCount} change${totalChangesCount !== 1 ? 's' : ''} available!`
+                  ) : ''}
+                </span>
+              </div>
+              <div className="flex items-center">
+                <button
+                  onClick={handleRefresh}
+                  className="sm:ml-4 px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm"
+                  disabled={loading}
+                >
+                  {loading ? 'Refreshing...' : 'Refresh Now'}
+                </button>
+                <button 
+                  className="ml-2 p-1 text-indigo-500 hover:text-indigo-700"
+                  onClick={dismissChanges}
+                  aria-label="Dismiss notification"
+                >
+                  <svg className="fill-current h-6 w-6" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <title>Dismiss</title>
+                    <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${hasChanges ? 'mt-24' : ''}`}>
         {error && (
           <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
             <strong className="font-bold">Error: </strong>
@@ -489,38 +609,6 @@ export default function CommunityPage() {
             >
               <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                 <title>Close</title>
-                <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
-              </svg>
-            </button>
-          </div>
-        )}
-        
-        {newPostsCount > 0 && (
-          <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-100 border-l-4 border-indigo-500 text-indigo-800 px-4 py-3 rounded shadow-md relative animate-pulse-subtle" role="alert">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center">
-              <div className="flex items-center mb-2 sm:mb-0">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-indigo-600 flex-shrink-0">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-                </svg>
-                <span className="block font-medium">
-                  {newPostsCount} new {newPostsCount === 1 ? 'post' : 'posts'} available!
-                </span>
-              </div>
-              <button
-                onClick={() => loadNewPosts(true)}
-                className="sm:ml-4 px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm"
-                disabled={isRefreshing}
-              >
-                {isRefreshing ? 'Refreshing...' : 'Refresh Now'}
-              </button>
-            </div>
-            <button 
-              className="absolute top-0 bottom-0 right-0 px-4 py-3"
-              onClick={() => loadNewPosts(false)}
-              aria-label="Dismiss notification"
-            >
-              <svg className="fill-current h-6 w-6 text-indigo-500 hover:text-indigo-700" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                <title>Dismiss</title>
                 <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
               </svg>
             </button>
@@ -647,7 +735,7 @@ export default function CommunityPage() {
                       >
                         {likedPosts.includes(post.id) ? (
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-1 text-red-500">
-                        <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+                        <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
                       </svg>
                         ) : (
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1">
