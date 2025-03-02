@@ -389,38 +389,83 @@ async def check_posts_changed(since: str = Query(..., description="ISO format ti
     
     Returns:
     - changed: Boolean indicating if any posts have changed
-    - new_posts_count: Number of new posts created since the timestamp
-    - updated_posts_count: Number of existing posts that have been updated since the timestamp
+    - new_posts: List of IDs of new posts created since the timestamp
+    - updated_posts: List of IDs of existing posts that have been updated since the timestamp
     - since: The parsed timestamp used for comparison
     """
     try:
-        # Parse the timestamp
-        since_datetime = datetime.fromisoformat(since.replace('Z', '+00:00'))
+        # Parse the timestamp, ensuring proper timezone handling
+        if since.endswith('Z'):
+            # Convert from UTC to local time by adding 8 hours (for Asia/Shanghai)
+            since_datetime = datetime.fromisoformat(since.replace('Z', '+00:00'))
+            # Make it timezone-naive for comparison with database timestamps
+            since_datetime_local = since_datetime.replace(tzinfo=None)
+            print(f"Parsed UTC timestamp: {since_datetime}, converted to local: {since_datetime_local}")
+        else:
+            # If no timezone specified, assume it's already in local time
+            since_datetime_local = datetime.fromisoformat(since)
+            print(f"Parsed local timestamp: {since_datetime_local}")
+        
+        # Get the current time (already in local timezone)
+        current_time = utcnow()
+        # Make sure current_time is timezone-naive for comparison
+        if current_time.tzinfo is not None:
+            current_time = current_time.replace(tzinfo=None)
+        print(f"Current time: {current_time}")
         
         # Ensure the timestamp is not in the future
-        if since_datetime > utcnow():
-            since_datetime = utcnow()
+        if since_datetime_local > current_time:
+            print(f"Warning: Provided timestamp {since_datetime_local} is in the future. Using current time {current_time} instead.")
+            since_datetime_local = current_time
         
-        # Query for new posts created after the timestamp
-        new_posts_query = session.query(Post).filter(Post.created_at > since_datetime)
-        new_posts_count = new_posts_query.count()
+        print(f"Using timestamp for query: {since_datetime_local}")
         
-        # Query for existing posts that have been updated after the timestamp
-        # This uses the new updated_at field to accurately track when posts are modified
-        updated_posts_query = session.query(Post).filter(
-            Post.created_at <= since_datetime,  # Posts that existed before the timestamp
-            Post.updated_at > since_datetime    # But were updated after the timestamp
+        # For debugging, let's print all posts in the database
+        all_posts = session.query(Post).all()
+        print(f"Total posts in database: {len(all_posts)}")
+        for post in all_posts:
+            print(f"Post {post.id}: created_at={post.created_at}, updated_at={post.updated_at}, thumbs_up={post.thumbs_up}")
+        
+        # Get all posts that might have changed since the timestamp
+        all_posts_query = session.query(Post).filter(
+            # Either created after the timestamp
+            (Post.created_at > since_datetime_local) |
+            # Or updated after the timestamp (and created before or at the timestamp)
+            ((Post.updated_at > since_datetime_local) & (Post.created_at <= since_datetime_local))
         )
-        updated_posts_count = updated_posts_query.count()
+        
+        all_changed_posts = all_posts_query.all()
+        print(f"Total changed posts: {len(all_changed_posts)}")
+        
+        # Identify new posts (created after the timestamp)
+        new_posts = [post for post in all_changed_posts if post.created_at > since_datetime_local]
+        new_post_ids = [post.id for post in new_posts]
+        
+        # Identify updated posts (updated after the timestamp but created before or at the timestamp)
+        updated_posts = [post for post in all_changed_posts if post.updated_at > since_datetime_local and post.created_at <= since_datetime_local]
+        updated_post_ids = [post.id for post in updated_posts]
+        
+        # For debugging
+        if new_posts:
+            for post in new_posts:
+                print(f"New post: id={post.id}, created_at={post.created_at}, updated_at={post.updated_at}")
+        else:
+            print("No new posts found")
+        
+        if updated_posts:
+            for post in updated_posts:
+                print(f"Updated post: id={post.id}, created_at={post.created_at}, updated_at={post.updated_at}")
+        else:
+            print("No updated posts found")
         
         # Determine if anything has changed
-        changed = new_posts_count > 0 or updated_posts_count > 0
+        changed = len(new_post_ids) > 0 or len(updated_post_ids) > 0
         
         return {
             "changed": changed,
-            "new_posts_count": new_posts_count,
-            "updated_posts_count": updated_posts_count,
-            "since": since_datetime.isoformat()
+            "new_posts": new_post_ids,
+            "updated_posts": updated_post_ids,
+            "since": since_datetime_local.isoformat()
         }
     except Exception as e:
         # Log the error for debugging
@@ -428,7 +473,7 @@ async def check_posts_changed(since: str = Query(..., description="ISO format ti
         # Return a default response instead of an error
         return {
             "changed": False,
-            "new_posts_count": 0,
-            "updated_posts_count": 0,
+            "new_posts": [],
+            "updated_posts": [],
             "error": str(e)
         }
