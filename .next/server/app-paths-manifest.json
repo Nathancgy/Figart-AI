@@ -1,3 +1,6 @@
 {
-  "/ai/page": "app/ai/page.js"
+  "/page": "app/page.js",
+  "/tutorial/page": "app/tutorial/page.js",
+  "/ai/page": "app/ai/page.js",
+  "/community/page": "app/community/page.js"
 }

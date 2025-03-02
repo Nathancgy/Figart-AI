@@ -110,10 +110,10 @@ export default function AIPage() {
     if (!suggestedFrame) {
       console.log("Creating default suggested frame");
       const defaultFrame = {
-        x: 0,
-        y: 0,
-        width: 375,
-        height: 667
+        x: 550,
+        y: 20,
+        width: 475,
+        height: 812
       };
       
       // Set the suggested frame
@@ -371,10 +371,10 @@ export default function AIPage() {
         console.log("No suggested frame from API, creating default");
         // Create a default frame if none is provided
         setSuggestedFrame({
-          x: 0, 
-          y: 0,
-          width: 375,
-          height: 667
+          x: 550, 
+          y: 20,
+          width: 475,
+          height: 812
         });
       }
       
