@@ -34,6 +34,7 @@ class Post(Base):
     photo_uuid = Column(String, nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
     thumbs_up = Column(Integer, default=0)
     
     # Add relationship to comments with cascade delete

@@ -68,29 +68,6 @@ export default function CommunityPage() {
     }
   }, [error]);
 
-  // Function to check for new posts without refreshing the entire list
-  const checkForNewPosts = async () => {
-    if (isRefreshing || sortMethod !== 'recent') return;
-    
-    try {
-      setIsRefreshing(true);
-      console.log('Checking for new posts since:', lastRefreshTime.toISOString());
-      
-      // Use the new endpoint that returns only post IDs
-      const response = await apiRequest(`/posts/new-ids/${lastRefreshTime.toISOString()}/`);
-      
-      if (response && response.post_ids && response.post_ids.length > 0) {
-        console.log(`Found ${response.post_ids.length} new posts since ${lastRefreshTime.toISOString()}`);
-        setNewPostsCount(response.post_ids.length);
-      }
-    } catch (error) {
-      // Don't show error to user for background refresh checks
-      console.error('Error checking for new posts:', error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
   // Function to load new posts and merge them with existing posts
   const loadNewPosts = async (refreshPage: boolean = false) => {
     if (newPostsCount === 0) return;

@@ -373,80 +373,25 @@ async def get_user_liked_posts(current_user: str = Depends(get_current_user)):
     
     return {"liked_posts": user.thumbed_posts}
 
-@app.get("/posts/new/{since}/")
-async def get_new_posts(since: str):
+@app.get("/posts/changed")
+async def check_posts_changed(since: str = Query(..., description="ISO format timestamp (e.g., '2023-04-01T12:00:00.000Z')")):
     """
-    Get posts newer than the specified timestamp
+    Check if any posts have been created or modified since the specified timestamp.
+    
+    This endpoint checks for:
+    - New posts created after the timestamp
+    - Existing posts that have had their thumbs_up count or other fields updated
+    
+    It does not track changes to comments.
     
     Parameters:
     - since: ISO format timestamp (e.g., '2023-04-01T12:00:00.000Z')
-             If not provided, returns posts from the last 24 hours
-    """
-    try:
-        # Default to 24 hours ago if no timestamp is provided
-        since_datetime = datetime.fromisoformat(since)
-        
-        # If a timestamp is provided, try to parse it
-        if since:
-            try:
-                # Try standard ISO format
-                since_datetime = datetime.fromisoformat(since.replace('Z', '+00:00'))
-            except ValueError:
-                # Just use the default if parsing fails
-                print(f"Failed to parse timestamp: {since}, using default")
-        
-        # Ensure the timestamp is not in the future
-        if since_datetime > utcnow():
-            since_datetime = utcnow()
-        
-        # Query posts newer than the timestamp
-        query = session.query(Post).filter(Post.created_at > since_datetime).order_by(Post.created_at.desc())
-        posts = query.all()
-        
-        # Format posts to include username instead of user_id
-        formatted_posts = []
-        for post in posts:
-            user = session.query(User).filter_by(id=post.user_id).first()
-            username = user.username if user else "Unknown User"
-            
-            # Ensure thumbs_up is never negative
-            thumbs_up = max(0, post.thumbs_up)
-            
-            # If we found a negative value, fix it in the database
-            if post.thumbs_up < 0:
-                post.thumbs_up = 0
-                session.commit()
-            
-            formatted_posts.append({
-                "id": post.id,
-                "photo_uuid": post.photo_uuid,
-                "user_id": username,  # Use username instead of user_id
-                "created_at": post.created_at.isoformat(),
-                "thumbs_up": thumbs_up
-            })
-        
-        return {
-            "posts": formatted_posts,
-            "count": len(formatted_posts),
-            "since": since_datetime.isoformat()
-        }
-    except Exception as e:
-        # Log the error for debugging
-        print(f"Error in get_new_posts: {str(e)}")
-        # Return empty results instead of an error
-        return {
-            "posts": [],
-            "count": 0,
-            "error": str(e)
-        }
-
-@app.get("/posts/new-ids/{since}/")
-async def get_new_post_ids(since: str):
-    """
-    Get only the IDs of posts newer than the specified timestamp
     
-    Parameters:
-    - since: ISO format timestamp (e.g., '2023-04-01T12:00:00.000Z')
+    Returns:
+    - changed: Boolean indicating if any posts have changed
+    - new_posts_count: Number of new posts created since the timestamp
+    - updated_posts_count: Number of existing posts that have been updated since the timestamp
+    - since: The parsed timestamp used for comparison
     """
     try:
         # Parse the timestamp
@@ -456,25 +401,34 @@ async def get_new_post_ids(since: str):
         if since_datetime > utcnow():
             since_datetime = utcnow()
         
-        # Query only post IDs and created_at timestamps newer than the given timestamp
-        query = session.query(Post.id, Post.created_at).filter(Post.created_at > since_datetime).order_by(Post.created_at.desc())
-        posts = query.all()
+        # Query for new posts created after the timestamp
+        new_posts_query = session.query(Post).filter(Post.created_at > since_datetime)
+        new_posts_count = new_posts_query.count()
         
-        # Format the response with just IDs and timestamps
-        post_ids = [{"id": post.id, "created_at": post.created_at.isoformat()} for post in posts]
+        # Query for existing posts that have been updated after the timestamp
+        # This uses the new updated_at field to accurately track when posts are modified
+        updated_posts_query = session.query(Post).filter(
+            Post.created_at <= since_datetime,  # Posts that existed before the timestamp
+            Post.updated_at > since_datetime    # But were updated after the timestamp
+        )
+        updated_posts_count = updated_posts_query.count()
+        
+        # Determine if anything has changed
+        changed = new_posts_count > 0 or updated_posts_count > 0
         
         return {
-            "post_ids": post_ids,
-            "count": len(post_ids),
+            "changed": changed,
+            "new_posts_count": new_posts_count,
+            "updated_posts_count": updated_posts_count,
             "since": since_datetime.isoformat()
         }
     except Exception as e:
         # Log the error for debugging
-        print(f"Error in get_new_post_ids: {str(e)}")
-        # Return empty results instead of an error
+        print(f"Error in check_posts_changed: {str(e)}")
+        # Return a default response instead of an error
         return {
-            "post_ids": [],
-            "count": 0,
+            "changed": False,
+            "new_posts_count": 0,
+            "updated_posts_count": 0,
             "error": str(e)
         }
-
