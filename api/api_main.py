@@ -478,27 +478,3 @@ async def get_new_post_ids(since: str):
             "error": str(e)
         }
 
-@app.post("/admin/fix-negative-thumbs/")
-async def fix_negative_thumbs(current_user: str = Depends(get_current_user)):
-    """
-    Fix any posts with negative thumbs up counts by setting them to 0
-    Only accessible to admin users
-    """
-    # Get the user to check if they're an admin
-    user = session.query(User).filter_by(username=current_user).first()
-    if not user or user.username != "admin":  # Simple admin check - you might want to use a proper role system
-        raise HTTPException(status_code=403, detail="Only admin users can perform this action")
-    
-    # Find all posts with negative thumbs up counts
-    negative_posts = session.query(Post).filter(Post.thumbs_up < 0).all()
-    
-    # Fix the negative counts
-    fixed_count = 0
-    for post in negative_posts:
-        post.thumbs_up = 0
-        fixed_count += 1
-    
-    # Commit the changes
-    session.commit()
-    
-    return {"message": f"Fixed {fixed_count} posts with negative thumbs up counts"}

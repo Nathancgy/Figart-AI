@@ -40,10 +40,8 @@ export default function CommunityPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [totalPages, setTotalPages] = useState(0);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [newPostsCount, setNewPostsCount] = useState(0);
-  const autoRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastLikesRefreshRef = useRef<Date>(new Date());
 
   // Close dropdown when clicking outside
@@ -70,79 +68,24 @@ export default function CommunityPage() {
     }
   }, [error]);
 
-  // Set up auto-refresh interval
-  useEffect(() => {
-    // Clear any existing interval first
-    if (autoRefreshIntervalRef.current) {
-      clearInterval(autoRefreshIntervalRef.current);
-      autoRefreshIntervalRef.current = null;
-    }
-    
-    if (autoRefreshEnabled && sortMethod === 'recent') {
-      console.log('Setting up auto-refresh interval');
-      
-      // Define the check function inside the effect to avoid dependency issues
-      const checkForNewPostsInEffect = async () => {
-        if (isRefreshing) return;
-        
-        try {
-          console.log('Auto-refresh checking for new posts');
-          
-          // Use the new endpoint that returns only post IDs
-          const response = await apiRequest(`/posts/new-ids/${lastRefreshTime.toISOString()}/`);
-          
-          if (response && response.post_ids && response.post_ids.length > 0) {
-            console.log(`Found ${response.post_ids.length} new posts in auto-refresh`);
-            setNewPostsCount(response.post_ids.length);
-          }
-          
-          // Also refresh liked posts status every 2 minutes (every 4th check at 30s intervals)
-          const currentTime = new Date();
-          const timeSinceLastLikesRefresh = currentTime.getTime() - lastLikesRefreshRef.current.getTime();
-          if (username && timeSinceLastLikesRefresh > 10000) { // 10 secs
-            console.log('Auto-refreshing liked posts status');
-            await fetchUserLikedPosts();
-            lastLikesRefreshRef.current = currentTime;
-          }
-        } catch (error) {
-          console.error('Error in auto-refresh:', error);
-        }
-      };
-      
-      // Check for new posts every 30 seconds
-      autoRefreshIntervalRef.current = setInterval(checkForNewPostsInEffect, 30000); // 30 seconds
-    }
-
-    return () => {
-      console.log('Cleaning up auto-refresh interval');
-      if (autoRefreshIntervalRef.current) {
-        clearInterval(autoRefreshIntervalRef.current);
-        autoRefreshIntervalRef.current = null;
-      }
-    };
-  }, [autoRefreshEnabled, sortMethod, isRefreshing]);
-
   // Function to check for new posts without refreshing the entire list
   const checkForNewPosts = async () => {
     if (isRefreshing || sortMethod !== 'recent') return;
-
+    
     try {
       setIsRefreshing(true);
-      
       console.log('Checking for new posts since:', lastRefreshTime.toISOString());
       
       // Use the new endpoint that returns only post IDs
       const response = await apiRequest(`/posts/new-ids/${lastRefreshTime.toISOString()}/`);
-      
-      console.log('New posts response:', response);
       
       if (response && response.post_ids && response.post_ids.length > 0) {
         console.log(`Found ${response.post_ids.length} new posts since ${lastRefreshTime.toISOString()}`);
         setNewPostsCount(response.post_ids.length);
       }
     } catch (error) {
-      console.error('Error checking for new posts:', error);
       // Don't show error to user for background refresh checks
+      console.error('Error checking for new posts:', error);
     } finally {
       setIsRefreshing(false);
     }
@@ -629,20 +572,7 @@ export default function CommunityPage() {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              {sortMethod === 'recent' && (
-                <div className="flex items-center">
-                  <label className="inline-flex items-center cursor-pointer mr-4">
-                    <input 
-                      type="checkbox" 
-                      checked={autoRefreshEnabled}
-                      onChange={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
-                      className="sr-only peer"
-                    />
-                    <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                    <span className="ms-3 text-sm font-medium text-gray-700">Auto-refresh</span>
-                  </label>
-                </div>
-              )}
+              {/* Auto-refresh toggle removed */}
               
               <div className="relative" ref={sortDropdownRef}>
                 <button
