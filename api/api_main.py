@@ -411,8 +411,8 @@ async def check_posts_changed(since: str = Query(..., description="ISO format ti
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
     # Select all posts with created_time >= since_datetime
-    new_posts = session.query(Post).filter(Post.created_at >= since_datetime).all()
-    changed_posts = session.query(Post).filter(Post.updated_at >= since_datetime).all()
+    new_posts = session.query(Post).filter(Post.created_at > since_datetime).all()
+    changed_posts = session.query(Post).filter(Post.updated_at > since_datetime).all()
 
     new_post_ids = [post.id for post in new_posts]
     updated_post_ids = [post.id for post in changed_posts]
@@ -439,7 +439,7 @@ except Exception as e:
     # We'll initialize it as None and check for it in the endpoint
     yolo_model = None
 
-@app.post("/api/detect-objects/")
+@app.post("/api/detect-objects")
 async def detect_objects(file: UploadFile = File(...)):
     """
     Analyze an image with YOLO to detect objects and suggest an optimal frame.

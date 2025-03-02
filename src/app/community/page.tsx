@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { apiRequest, getAuthToken } from '@/utils/auth';
 import { useAuth } from '@/contexts/AuthContext';
-import { API_URL, getPhotoUrl } from '@/utils/config';
+import { getPhotoUrl } from '@/utils/config';
 
 // Debug log to check if this file is being loaded
 // console.log('%c Community page component loaded', 'background: #ff0000; color: white; font-size: 16px; padding: 5px;');
@@ -39,16 +39,26 @@ export default function CommunityPage() {
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [totalPages, setTotalPages] = useState(0);
-  const lastLikesRefreshRef = useRef<Date>(new Date());
-  const [lastCheckTime, setLastCheckTime] = useState<Date>(new Date());
+  const [lastCheckTime, setLastCheckTime] = useState(new Date());
   const [hasChanges, setHasChanges] = useState(false);
   const [newPostsCount, setNewPostsCount] = useState(0);
   const [updatedPostsCount, setUpdatedPostsCount] = useState(0);
   const [totalChangesCount, setTotalChangesCount] = useState(0);
+  const [isClient, setIsClient] = useState(false);
+  
+  // References that should only be created on the client
+  const lastLikesRefreshRef = useRef<Date>(new Date());
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Set isClient to true once the component mounts
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (!isClient) return; // Skip this effect during server-side rendering
+    
     function handleClickOutside(event: MouseEvent) {
       if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
         setShowSortDropdown(false);
@@ -59,34 +69,31 @@ export default function CommunityPage() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [isClient]);
 
   // Poll for changes every 15 seconds
   useEffect(() => {
+    if (!isClient) return; // Skip this effect during server-side rendering
+    
     const checkForChanges = async () => {
       try {
         // Format the date as ISO string for the API
         const isoTime = lastCheckTime.toISOString();
-        console.log(isoTime);
         
         // Call the /posts/changed endpoint
         const response = await apiRequest(`/posts/changed?since=${isoTime}`);
         setLastCheckTime(new Date());
-        if (response && (response.new_posts.length > 0 || response.updated_posts.length > 0)) {
+        
+        // Only show notification for new posts, not for thumbs up changes
+        if (response && response.new_posts.length > 0) {
           setHasChanges(true);
           setNewPostsCount(response.new_posts.length);
-          setUpdatedPostsCount(response.updated_posts.length);
           
-          // Calculate total unique changes by combining arrays and removing duplicates
-          // First, extract just the post IDs from the objects
-          const newPostIds = response.new_posts.map((post: PostIdObject) => post.id);
-          const updatedPostIds = response.updated_posts.map((post: PostIdObject) => post.id);
+          // For updated posts, we're now ignoring them in the notification count
+          setUpdatedPostsCount(0);
           
-          // Combine arrays and use Set to remove duplicates
-          const uniqueChanges = new Set([...newPostIds, ...updatedPostIds]);
-          setTotalChangesCount(uniqueChanges.size);
-          
-          console.log(`Changes detected: ${response.new_posts.length} new posts, ${response.updated_posts.length} updated posts, ${uniqueChanges.size} total unique changes`);
+          // Only count new posts for the total changes count
+          setTotalChangesCount(response.new_posts.length);
         }
       } catch (error) {
         console.error('Error checking for changes:', error);
@@ -102,17 +109,17 @@ export default function CommunityPage() {
         clearInterval(pollingIntervalRef.current);
       }
     };
-  }, [lastCheckTime]);
+  }, [lastCheckTime, isClient]);
 
   // Clear error after 5 seconds
   useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => {
-        setError(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
+    if (!isClient || !error) return; // Skip during server-side rendering or if no error
+    
+    const timer = setTimeout(() => {
+      setError(null);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [error, isClient]);
 
   // Function to handle refreshing the page when changes are detected
   const handleRefresh = async () => {
@@ -149,6 +156,8 @@ export default function CommunityPage() {
 
   // Fetch posts and user's liked posts when component mounts or username changes
   useEffect(() => {
+    if (!isClient) return; // Skip this effect during server-side rendering
+    
     // Only run this effect on mount or when sortMethod changes
     const controller = new AbortController();
     
@@ -160,13 +169,15 @@ export default function CommunityPage() {
     } else {
       // Clear liked posts when user logs out
       setLikedPosts([]);
-      localStorage.removeItem('likedPosts');
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('likedPosts');
+      }
     }
     
     return () => {
       controller.abort();
     };
-  }, [username, sortMethod]);
+  }, [username, sortMethod, isClient]);
 
   const fetchUserLikedPosts = async () => {
     if (!username) return;
@@ -175,17 +186,21 @@ export default function CommunityPage() {
       const response = await apiRequest('/users/liked-posts/');
       if (response && response.liked_posts) {
         setLikedPosts(response.liked_posts as number[]);
-        localStorage.setItem('likedPosts', JSON.stringify(response.liked_posts));
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('likedPosts', JSON.stringify(response.liked_posts));
+        }
       }
     } catch (err) {
       console.error('Error fetching liked posts:', err);
       // Fallback to localStorage if API fails
-      const savedLikes = localStorage.getItem('likedPosts');
-      if (savedLikes) {
-        try {
-          setLikedPosts(JSON.parse(savedLikes));
-        } catch (e) {
-          console.error('Error loading liked posts from localStorage', e);
+      if (typeof localStorage !== 'undefined') {
+        const savedLikes = localStorage.getItem('likedPosts');
+        if (savedLikes) {
+          try {
+            setLikedPosts(JSON.parse(savedLikes));
+          } catch (e) {
+            console.error('Error loading liked posts from localStorage', e);
+          }
         }
       }
     }
@@ -202,9 +217,6 @@ export default function CommunityPage() {
       
       // Get posts with sorting and pagination
       const currentPage = reset ? 0 : page;
-      
-      // Log the API URL directly
-      const apiUrl = API_URL();
       
       const response = await apiRequest(`/posts/?sort_by=${sortMethod}&page=${currentPage}`);
       
@@ -464,8 +476,13 @@ export default function CommunityPage() {
       const { getCacheControlHeaders } = await import('@/utils/config');
       const cacheHeaders = getCacheControlHeaders();
 
-      // Upload the photo and create post in one step
-      const response = await fetch(`${API_URL()}/posts/create/`, {
+      // Ensure we're in a browser environment
+      if (typeof window === 'undefined') {
+        throw new Error('File upload is only supported in browser environments');
+      }
+
+      // Use fetch directly for file upload since apiRequest doesn't support FormData
+      const response = await fetch(`${window.location.origin.replace('3000', '8000')}/posts/create/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -534,7 +551,9 @@ export default function CommunityPage() {
       }
       
       // Save to localStorage on success
-      localStorage.setItem('likedPosts', JSON.stringify(newLikedPosts));
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('likedPosts', JSON.stringify(newLikedPosts));
+      }
       
     } catch (err) {
       console.error('Error liking post:', err);
@@ -570,7 +589,7 @@ export default function CommunityPage() {
                 </svg>
                 <span className="block font-medium">
                   {totalChangesCount > 0 ? (
-                    `${totalChangesCount} change${totalChangesCount !== 1 ? 's' : ''} available!`
+                    `${totalChangesCount} new photo${totalChangesCount !== 1 ? 's' : ''} available!`
                   ) : ''}
                 </span>
               </div>

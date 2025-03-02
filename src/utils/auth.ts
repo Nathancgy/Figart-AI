@@ -1,10 +1,37 @@
 import Cookies from 'js-cookie';
-import { API_URL, getCacheControlHeaders } from './config';
+import { getCacheControlHeaders } from './config';
 
 // Debug log to check if this file is being loaded
 // console.log('Auth module loaded');
 
-// const API_URL = 'http://localhost:8000';
+// Hardcoded API URL as a fallback
+const HARDCODED_API_URL = 'http://192.168.8.115:8000';
+
+// API URL configuration - use the same base URL as the frontend
+const getApiUrl = (): string => {
+  // Check if we're in a browser environment
+  if (typeof window !== 'undefined') {
+    // For same-origin development, use the current origin
+    const currentOrigin = window.location.origin;
+    
+    // If we're already on the API domain (e.g., running on the same server)
+    if (currentOrigin.includes('8000')) {
+      return currentOrigin;
+    }
+    
+    // If we're on localhost:3000, try to use localhost:8000 for the API
+    if (currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1')) {
+      return currentOrigin.replace('3000', '8000');
+    }
+    
+    // For other environments, use the hardcoded URL
+    return HARDCODED_API_URL;
+  }
+  
+  // Server-side rendering or non-browser environment
+  return HARDCODED_API_URL;
+};
+
 const TOKEN_COOKIE_NAME = 'auth_token';
 
 export const setAuthToken = (token: string) => {
@@ -28,7 +55,9 @@ export const logout = (redirect: boolean = true) => {
   removeAuthToken();
   
   // Clear any user data from localStorage
-  localStorage.removeItem('user');
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('user');
+  }
   
   // Show a notification to the user
   if (typeof window !== 'undefined') {
@@ -44,7 +73,7 @@ export const login = async (username: string, password: string) => {
   const cacheHeaders = getCacheControlHeaders();
   
   // Get the API URL and log it
-  const apiUrl = API_URL();
+  const apiUrl = getApiUrl();
   // console.log('API URL in login function:', apiUrl);
   
   const response = await fetch(`${apiUrl}/users/login/`, {
@@ -79,7 +108,7 @@ export const login = async (username: string, password: string) => {
 export const signup = async (username: string, password: string) => {
   const cacheHeaders = getCacheControlHeaders();
   
-  const response = await fetch(`${API_URL()}/users/register/`, {
+  const response = await fetch(`${getApiUrl()}/users/register/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -123,14 +152,17 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
     ...options.headers,
   };
 
-  const apiUrl = API_URL();
+  const apiUrl = getApiUrl();
   // console.log('%c API URL in apiRequest:', 'background: #66ff00; color: black; font-size: 14px; padding: 3px;', apiUrl);
   
   const fullUrl = `${apiUrl}${endpoint}`;
   // console.log('%c Full request URL:', 'background: #0066ff; color: white; font-size: 14px; padding: 3px;', fullUrl);
 
   // Determine if this is a cross-origin request
-  const isCrossOrigin = new URL(fullUrl).origin !== window.location.origin;
+  let isCrossOrigin = false;
+  if (typeof window !== 'undefined') {
+    isCrossOrigin = new URL(fullUrl).origin !== window.location.origin;
+  }
   
   try {
     const response = await fetch(fullUrl, {
