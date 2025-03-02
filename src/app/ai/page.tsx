@@ -33,7 +33,6 @@ export default function AIPage() {
   const [scoredFrames, setScoredFrames] = useState<FrameScore[]>([]);
   const [highestScoringFrame, setHighestScoringFrame] = useState<FrameScore | null>(null);
   const [scanProgress, setScanProgress] = useState(0);
-  const [isScanningActive, setIsScanningActive] = useState(false);
   
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -101,24 +100,32 @@ export default function AIPage() {
   });
   
   const scanFrames = () => {
-    if (!imageUrl || !suggestedFrame) {
-      console.error("Cannot scan frames: imageUrl or suggestedFrame is null");
-      // Create a default frame if suggestedFrame is missing
-      if (imageUrl && !suggestedFrame) {
-        console.log("Creating default suggested frame");
-        const defaultFrame = {
-          x: 0,
-          y: 0,
-          width: 375,
-          height: 667
-        };
-        setSuggestedFrame(defaultFrame);
-        // Use the default frame for scanning
-        scanWithFrame(defaultFrame);
-      }
+    // First check if we have an image URL
+    if (!imageUrl) {
+      console.error("Cannot scan frames: No image URL available");
       return;
     }
     
+    // If we have imageUrl but no suggestedFrame, create a default one
+    if (!suggestedFrame) {
+      console.log("Creating default suggested frame");
+      const defaultFrame = {
+        x: 0,
+        y: 0,
+        width: 375,
+        height: 667
+      };
+      
+      // Set the suggested frame
+      setSuggestedFrame(defaultFrame);
+      
+      // Use the default frame for scanning
+      console.log("Starting frame scanning with default frame");
+      scanWithFrame(defaultFrame);
+      return;
+    }
+    
+    // If we have both imageUrl and suggestedFrame, proceed normally
     console.log("Starting frame scanning with frame:", suggestedFrame);
     scanWithFrame(suggestedFrame);
   };
@@ -139,30 +146,43 @@ export default function AIPage() {
     // Generate all scan positions
     const scanPositions: Array<{x: number, y: number}> = [];
     
-    for (let y = 0; y <= imgHeight - frameHeight; y += stepY) {
+    // Ensure we don't exceed image boundaries
+    const maxY = imgHeight - frameHeight;
+    
+    for (let y = 0; y <= maxY; y += stepY) {
       for (let x = 0; x <= imgWidth - frameWidth; x += stepX) {
         // Skip positions that would go beyond the image bounds
         if (x + frameWidth <= imgWidth && y + frameHeight <= imgHeight) {
-          scanPositions.push({x, y});
+          // Check if this frame would intersect with any detected object box
+          const adjustedX = adjustFrameToAvoidSplittingObjects(x, y, frameWidth, frameHeight);
+          // Ensure y is also within bounds
+          const boundedY = Math.min(y, maxY);
+          scanPositions.push({x: adjustedX, y: boundedY});
         }
       }
     }
     
     // Add the suggested frame as the last position (which will be the highest scoring)
+    // Also adjust it if needed and ensure it's within bounds
+    const adjustedSuggestedX = adjustFrameToAvoidSplittingObjects(frame.x, frame.y, frameWidth, frameHeight);
+    const boundedY = Math.min(frame.y, maxY);
     scanPositions.push({
-      x: frame.x,
-      y: frame.y
+      x: adjustedSuggestedX,
+      y: boundedY
     });
     
     console.log(`Created ${scanPositions.length} scan positions`);
     
     // Start the scanning process
     let currentIndex = 0;
-    setIsScanningActive(true);
     setScanProgress(0);
     
-    // Clear existing scored frames
+    // Clear existing scored frames and highest score
     setScoredFrames([]);
+    setHighestScoringFrame(null);
+    
+    // Define maximum score - can be adjusted as needed
+    const maxScore = 10.0;
     
     // Function to handle each scan step
     const scanStep = () => {
@@ -171,7 +191,6 @@ export default function AIPage() {
       if (currentIndex >= scanPositions.length) {
         // End of scanning
         console.log("Scanning complete, transitioning to final frame");
-        setIsScanningActive(false);
         
         // Transition to showing the highest scoring frame
         setAnimationState('transitionToFrame');
@@ -211,7 +230,7 @@ export default function AIPage() {
         let score: number;
         if (currentIndex === scanPositions.length - 1) {
           // This is the suggested frame, give it the highest score
-          score = 9.5;
+          score = maxScore;
         } else {
           // Random score between 4 and 8.5
           score = 4 + Math.random() * 4.5;
@@ -250,6 +269,52 @@ export default function AIPage() {
     // Start the scanning process
     console.log("Starting scan steps");
     scanStep();
+  };
+  
+  // Function to adjust frame position to avoid splitting detected objects
+  const adjustFrameToAvoidSplittingObjects = (
+    x: number, 
+    y: number, 
+    width: number, 
+    height: number
+  ): number => {
+    if (!detectedObjects.length) return x;
+    
+    let adjustedX = x;
+    let needsAdjustment = true;
+    
+    while (needsAdjustment) {
+      needsAdjustment = false;
+      
+      // Check each detected object
+      for (const obj of detectedObjects) {
+        const [objX1, objY1, objX2, objY2] = obj.box;
+        
+        // Check if the frame cuts through the object box
+        const frameCutsObject = 
+          adjustedX < objX2 && 
+          adjustedX + width > objX1 && 
+          y < objY2 && 
+          y + height > objY1 && 
+          !(adjustedX <= objX1 && adjustedX + width >= objX2);
+        
+        if (frameCutsObject) {
+          // Move the frame to the right of the object
+          adjustedX = objX2;
+          needsAdjustment = true;
+          console.log(`Adjusted frame to x=${adjustedX} to avoid splitting object`);
+          break;
+        }
+      }
+      
+      // Safety check to prevent infinite loop
+      if (adjustedX + width > 1200) {
+        console.log("Frame adjustment reached edge of image, stopping");
+        break;
+      }
+    }
+    
+    return adjustedX;
   };
   
   const analyzeImage = async () => {
@@ -357,7 +422,7 @@ export default function AIPage() {
     
     return (
       <>
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/30 backdrop-blur-sm">
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/30">
           <div className="animate-pulse flex space-x-4">
             <div className="h-12 w-12 rounded-full bg-indigo-500/30"></div>
           </div>
@@ -382,6 +447,62 @@ export default function AIPage() {
         {!imagesLoaded[id] && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+          </div>
+        )}
+      </>
+    );
+  };
+  
+  // Render frames as overlays on the full image
+  const renderFrameOverlays = () => {
+    if (!scoredFrames.length) return null;
+    
+    return (
+      <>
+        {scoredFrames.map((frame, index) => {
+          const isHighestScore = highestScoringFrame && frame.score === highestScoringFrame.score;
+          return (
+            <div
+              key={index}
+              className={`absolute border-2 ${
+                isHighestScore 
+                  ? 'border-green-500 shadow-lg shadow-green-500/20' 
+                  : 'border-indigo-400/70'
+              } transition-all duration-300`}
+              style={{
+                left: `${frame.x * 100 / 1200}%`,
+                top: `${frame.y * 100 / 900}%`,
+                width: `${frame.width * 100 / 1200}%`,
+                height: `${frame.height * 100 / 900}%`,
+              }}
+            >
+              <div 
+                className={`absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 px-2 py-1 text-xs font-bold rounded-full shadow-md ${
+                  isHighestScore 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-indigo-800/80 text-indigo-100'
+                }`}
+              >
+                {frame.score.toFixed(1)}
+              </div>
+            </div>
+          );
+        })}
+        
+        {/* Current frame being evaluated */}
+        {currentScanningFrame && scanningScore === null && (
+          <div
+            className="absolute border-2 border-yellow-400 border-dashed animate-pulse"
+            style={{
+              left: `${currentScanningFrame.x * 100 / 1200}%`,
+              top: `${currentScanningFrame.y * 100 / 900}%`,
+              width: `${currentScanningFrame.width * 100 / 1200}%`,
+              height: `${currentScanningFrame.height * 100 / 900}%`,
+            }}
+          >
+            <div className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 px-2 py-1 text-xs font-bold rounded-full bg-yellow-500/80 text-white animate-pulse">
+              Analyzing...
+            </div>
           </div>
         )}
       </>
@@ -428,7 +549,7 @@ export default function AIPage() {
               onLoad={() => handleImageLoad('boxed-image')}
             />
             {!imagesLoaded['boxed-image'] && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm">
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-900/40">
                 <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
               </div>
             )}
@@ -458,14 +579,17 @@ export default function AIPage() {
     if (animationState === 'scanningFrames' && imageUrl && currentScanningFrame) {
       return (
         <div className="glass-dark border-indigo-800/20 rounded-xl overflow-hidden">
-          <div className="relative" style={{ paddingBottom: `${(667/375) * 100}%` }}>
-            {/* Current scanning frame */}
-            {renderFramedImage(
-              imageUrl,
-              currentScanningFrame,
-              "Scanning Frame",
-              "scanning-frame"
-            )}
+          <div className="relative" style={{ paddingBottom: '75%' }}>
+            {/* Use the boxed image instead of original to keep detection boxes visible */}
+            <img 
+              src={boxedImageUrl || imageUrl} 
+              alt="Object Detection with Frame Analysis" 
+              className="absolute inset-0 w-full h-full object-contain"
+              onLoad={() => handleImageLoad('full-image-scan')}
+            />
+            
+            {/* Render all frame overlays */}
+            {renderFrameOverlays()}
             
             {/* Progress bar */}
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-900">
@@ -484,20 +608,38 @@ export default function AIPage() {
                 </div>
               ) : (
                 <div className="flex items-center text-sm">
-                  <div className="mr-2 text-indigo-300">Score:</div>
+                  <div className="mr-2 text-indigo-300">Latest Frame Score:</div>
                   <div className="px-3 py-1 rounded-full bg-indigo-700 text-white font-bold">
                     {scanningScore.toFixed(1)}/10
                   </div>
                 </div>
               )}
             </div>
+            
+            {!imagesLoaded['full-image-scan'] && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-900/40">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+              </div>
+            )}
           </div>
           
           <div className="p-6 bg-black/20">
             <h3 className="font-bold text-lg text-indigo-100">Frame Scoring Analysis</h3>
             <p className="mt-2 text-sm text-indigo-300">
-              Evaluating potential frames across your photo to find the optimal composition.
+              Evaluating potential frames while respecting detected objects for optimal composition.
             </p>
+            
+            {/* Only show highest score if we have scored at least one frame */}
+            {highestScoringFrame && (
+              <div className="mt-4 p-3 glass rounded-lg border border-green-500/30">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium text-indigo-100">Current Highest Score:</div>
+                  <div className="px-3 py-1 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-sm">
+                    {highestScoringFrame.score.toFixed(1)}/10
+                  </div>
+                </div>
+              </div>
+            )}
             
             {/* Show scored frames so far */}
             {scoredFrames.length > 0 && (
