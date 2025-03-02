@@ -6,10 +6,10 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/community/page": [
+    "/ai/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/community/page.js"
+      "static/chunks/app/ai/page.js"
     ]
   }
 }
