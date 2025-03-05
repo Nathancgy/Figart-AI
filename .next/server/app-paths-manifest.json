@@ -1,8 +1,0 @@
-{
-  "/tutorial/page": "app/tutorial/page.js",
-  "/page": "app/page.js",
-  "/terms/page": "app/terms/page.js",
-  "/privacy/page": "app/privacy/page.js",
-  "/community/page": "app/community/page.js",
-  "/ai/page": "app/ai/page.js"
-}
