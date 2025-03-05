@@ -1,43 +1,71 @@
-# Figart AI - Photography Tutorial and Community
+<table>
+  <tr>
+    <td width="70%">
+      <h1>Figart AI Web Demo Version</h1>
+      <p>An interactive platform designed to help photography enthusiasts at all levels perfect their craft through AI-powered guidance, engaging tutorials, and community feedback.</p>
+    </td>
+    <td width="30%" align="right">
+      <img src="public/placeholders/header-image.jpg" alt="Figart AI: Photography Mastery" width="200px">
+    </td>
+  </tr>
+</table>
 
-A web application that helps users improve their photography skills through interactive tutorials, AI-powered analysis, and community feedback.
+## Key Features
 
-## Features
+### Interactive Photography Tutorial
+Learn to frame the perfect shot by practicing on real-world scenes. Drag a phone-shaped frame across landscape images to find the optimal composition, then compare your choices with AI recommendations and community favorites.
 
-- **Interactive Photography Tutorials**: Practice framing and composition by finding the best frame in large landscape images.
-- **AI-Powered Analysis**: Our AI algorithms analyze photos to suggest optimal framing based on composition principles.
-- **Community and Feedback**: Share your photos and frames, receive likes and feedback from other photographers.
+<!-- Tutorial Demo Video (Placeholder) -->
+<div align="center">
+  <img src="public/placeholders/demo1.gif" alt="Tutorial Demo" width="600px">
+  <p><i>Tutorial Demo: Practice framing the perfect shot</i></p>
+</div>
 
-## Technologies Used
+### AI Photography Assistant
+Our AI analyzes images to identify the most aesthetically pleasing compositions based on the following workflow:
 
-- **Frontend**: Next.js, React, TypeScript, Tailwind CSS
-- **AI and Image Processing**: OpenAI API, Hugging Face Inference API, Sharp
-- **Database**: MongoDB with Mongoose
-- **Authentication**: NextAuth.js
+<div align="center">
+  <!-- Header Image Placeholder (Recommended size: 1200x400px) -->
+  <img src="public/placeholders/figart.png" alt="AI tool workflow" width="600px">
+</div>
+
+<!-- AI Tool Demo Video (Placeholder) -->
+<div align="center">
+  <img src="public/placeholders/demo2.gif" alt="AI Tool Demo" width="600px">
+  <p><i>AI Tool Demo</i></p>
+</div>
+
+### Photography Community
+Share your work, receive constructive feedback, and engage with fellow photographers. This community helps you grow while the AI provides personalized suggestions for improvement.
+
+<!-- Community Demo Video (Placeholder) -->
+<div align="center">
+  <img src="public/placeholders/demo3.gif" alt="Community Demo" width="600px">
+  <p><i>Community Demo</i></p>
+</div>
 
 ## Getting Started
 
 ### Prerequisites
-
-- Node.js 18+ and npm
+- Node.js 18+
 - MongoDB (local or Atlas)
-- Hugging Face API key
-- OpenAI API key
+- API keys for AI services
 
-### Installation
+### Quick Setup
 
-1. Clone the repository
+1. **Clone the repository**
    ```
    git clone https://github.com/yourusername/figart-ai.git
    cd figart-ai
    ```
 
-2. Install dependencies
+2. **Install dependencies**
    ```
    npm install
    ```
 
-3. Create a `.env.local` file in the root directory with the following variables:
+3. **Set up environment variables**
+   Create a `.env.local` file with the necessary configuration:
    ```
    MONGODB_URI=your_mongodb_connection_string
    NEXTAUTH_URL=http://localhost:3000
@@ -46,44 +74,45 @@ A web application that helps users improve their photography skills through inte
    OPENAI_API_KEY=your_openai_key
    ```
 
-4. Run the development server
+4. **Start the development server**
    ```
    npm run dev
    ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
+5. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
 
-## Project Structure
+6. **For community features in local environment**
+   To use the community feature with others in a local environment, run the following command:
+   ```
+   uvicorn api_main:app
+   ```
 
-- `/src/app`: Next.js App Router pages and layouts
-- `/src/components`: Reusable React components
-- `/src/utils`: Utility functions including AI image processing
-- `/src/models`: Database models
-- `/src/types`: TypeScript interfaces and types
-- `/src/lib`: Library code for database connections and authentication
+## Technology Stack
 
-## AI Algorithm Overview
+- **Frontend**: Next.js, React, TypeScript, Tailwind CSS
+- **AI Services**: OpenAI API, Hugging Face Models
+- **Backend**: Node.js, MongoDB
+- **Authentication**: NextAuth.js
 
-The core AI algorithm for finding the optimal frame in a photo:
+## Why Figart AI?
 
-1. **Image Analysis**: Uses computer vision models to detect objects and features in the image
-2. **Composition Principles**: Applies photography principles like rule of thirds and leading lines
-3. **Frame Calculation**: Determines the optimal vertical frame based on the analysis
-4. **Score Calculation**: Evaluates user frames against the AI's suggested frame using IoU (Intersection over Union) and center distance metrics
+- **Learn by Doing**: Interactive tutorials that simulate real phone photography
+- **AI-Powered Guidance**: Get instant feedback based on professional photography principles
+- **Community Support**: Learn from peers and grow together in a supportive environment
+- **Practical Skills**: Develop techniques you can apply immediately to your photography
 
-## Community Guidelines
+## How It Works
 
-We encourage users to:
-- Provide constructive feedback on others' photos
-- Share high-quality, original images
-- Respect copyright and intellectual property
-- Be supportive and positive in all interactions
+1. **Tutorial Mode**: Practice finding the best frame in landscape photos
+2. **AI Analysis**: Our algorithms evaluate compositions based on multiple factors:
+   - Rule of thirds
+   - Subject placement
+   - Leading lines
+   - Visual balance
+   - Color harmony
+3. **Community Interaction**: Share your frames, view popular choices, and receive feedback
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Image examples from Unsplash
-- Icon designs from Heroicons 
+This project is licensed under the MIT License - see the LICENSE file for details. 
