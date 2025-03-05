@@ -2,7 +2,7 @@
   <tr>
     <td width="70%">
       <h1>Figart AI Web Demo Version</h1>
-      <p>An interactive platform designed to help photography enthusiasts at all levels perfect their craft through AI-powered guidance, engaging tutorials, and community feedback. App version is under deployment.</p>
+      <p>An interactive platform designed to learn photography through AI guidance, tutorials, and community feedback. App version is under deployment - product for Moonshot 48 hackathon (March 2025, Beijing).</p>
     </td>
     <td width="30%" align="right">
       <img src="public/placeholders/header-image.jpg" alt="Figart AI: Photography Mastery" width="200px">
