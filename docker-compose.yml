@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: figart-ai-nextjs
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://api:8000}
+      - NEXT_PUBLIC_FRONTEND_URL=${NEXT_PUBLIC_FRONTEND_URL:-http://localhost:3000}
+    networks:
+      - figart-network
+    depends_on:
+      - api
+
+  api:
+    image: ${API_IMAGE:-figart-api:latest}  # You'll need to build this separately or specify an existing image
+    container_name: figart-ai-api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      # Add other API environment variables as needed
+    networks:
+      - figart-network
+    volumes:
+      - api-data:/app/data
+
+networks:
+  figart-network:
+    driver: bridge
+
+volumes:
+  api-data: 

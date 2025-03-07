@@ -429,14 +429,15 @@ async def check_posts_changed(since: str = Query(..., description="ISO format ti
     }
 
 
-# Initialize YOLOv8 model with better error handling
+# Initialize YOLOv8 model
+print("Initializing YOLOv8 model...")
 try:
-    print("Initializing YOLOv8 model...")
+    import torch.serialization
+    torch.serialization.add_safe_globals([('ultralytics.nn.tasks.DetectionModel', 'DetectionModel')])
     yolo_model = YOLO("yolov8n.pt")  # Using the nano model for faster processing
     print("YOLOv8 model initialized successfully")
 except Exception as e:
     print(f"Error initializing YOLOv8 model: {str(e)}")
-    # We'll initialize it as None and check for it in the endpoint
     yolo_model = None
 
 @app.post("/api/detect-objects")
