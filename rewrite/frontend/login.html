@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - FigArt AI</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation Bar -->
+        <header class="navbar">
+            <div class="navbar-logo">
+                <a href="index.html">FigArt AI</a>
+            </div>
+            <nav class="navbar-links">
+                <a href="community.html" class="nav-link">社区</a>
+                <a href="tutorial.html" class="nav-link">教程</a>
+                <div class="auth-links" id="authLinks">
+                    <!-- Will be populated by JavaScript based on auth status -->
+                </div>
+            </nav>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="auth-container">
+                <div class="auth-card">
+                    <div class="auth-header">
+                        <h1>登录</h1>
+                        <p>欢迎回到 FigArt AI</p>
+                    </div>
+                    
+                    <div id="authError" class="auth-error hidden"></div>
+                    
+                    <form id="loginForm" class="auth-form">
+                        <div class="form-group">
+                            <label for="username">用户名</label>
+                            <input type="text" id="username" name="username" required minlength="3" maxlength="24" />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password">密码</label>
+                            <input type="password" id="password" name="password" required minlength="6" />
+                        </div>
+                        
+                        <div class="form-footer">
+                            <a href="forgot-password.html" class="forgot-password-link">忘记密码？</a>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-block" id="loginButton">
+                            <span class="btn-text">登录</span>
+                            <span class="btn-loader hidden"></span>
+                        </button>
+                    </form>
+                    
+                    <div class="auth-alt">
+                        <p>还没有账号？ <a href="register.html">立即注册</a></p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="privacy.html">隐私政策</a>
+                    <a href="terms.html">使用条款</a>
+                </div>
+                <div class="footer-copyright">
+                    &copy; 2024 FigArt AI. All rights reserved.
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/login.js"></script>
+</body>
+</html> 

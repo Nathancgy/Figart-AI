@@ -1,17 +1,20 @@
 from sqlalchemy import DateTime, create_engine, Column, Integer, String, JSON, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import sessionmaker, relationship, scoped_session
 from fastapi import HTTPException
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timezone
+import logging
 
 from settings import *
+
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
 def utcnow():
-    tz = datetime.now().astimezone().tzinfo
-    return datetime.now(tz)
+    """Return current UTC datetime with timezone info."""
+    return datetime.now(timezone.utc)
 
 class User(Base):
     __tablename__ = 'users'
@@ -58,34 +61,77 @@ class Comment(Base):
 # Database setup
 if RUN_TESTS:
     DB = "sqlite:///test.db"
-engine = create_engine(DB)
-Base.metadata.create_all(engine)
 
-Session = sessionmaker(bind=engine)
-session = Session()
+try:
+    engine = create_engine(DB)
+    Base.metadata.create_all(engine)
+    
+    # Use scoped_session to ensure thread safety
+    Session = scoped_session(sessionmaker(bind=engine))
+    
+    logger.info(f"Database initialized successfully: {DB}")
+except Exception as e:
+    logger.error(f"Failed to initialize database: {str(e)}")
+    raise
 
-# Example of adding a new user
+# Database operation functions with proper error handling
 def add_user(username, password):
-    new_user = User(username=username)
-    new_user.set_password(password)
-    session.add(new_user)
-    session.commit()
+    """Add a new user to the database with error handling."""
+    try:
+        session = Session()
+        new_user = User(username=username)
+        new_user.set_password(password)
+        session.add(new_user)
+        session.commit()
+        return new_user.id
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error adding user {username}: {str(e)}")
+        raise
+    finally:
+        session.close()
 
-# Example of user login
 def login(username, password):
-    user = session.query(User).filter_by(username=username).first()
-    if user and user.check_password(password):
-        return True
-    return False
+    """Login user with error handling."""
+    try:
+        session = Session()
+        user = session.query(User).filter_by(username=username).first()
+        if user and user.check_password(password):
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"Error during login for user {username}: {str(e)}")
+        return False
+    finally:
+        session.close()
 
-def create_post(photo_id, user_id):
-    post = Post(photo_id=photo_id, user_id=user_id)
-    session.add(post)
-    session.commit()
-    return post.id
+def create_post(photo_uuid, user_id):
+    """Create a new post using the correct photo_uuid parameter."""
+    try:
+        session = Session()
+        post = Post(photo_uuid=photo_uuid, user_id=user_id)
+        session.add(post)
+        session.commit()
+        return post.id
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error creating post for user {user_id}: {str(e)}")
+        raise
+    finally:
+        session.close()
 
 def get_post_or_404(post_id):
-    post = session.query(Post).filter_by(id=post_id).first()
-    if not post:
-        raise HTTPException(status_code=404, detail="Post doesn't exist")
-    return post
+    """Get a post or raise 404 error with proper error handling."""
+    try:
+        session = Session()
+        post = session.query(Post).filter_by(id=post_id).first()
+        if not post:
+            raise HTTPException(status_code=404, detail="Post doesn't exist")
+        return post
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving post {post_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Database error")
+    finally:
+        session.close()

@@ -1,0 +1,104 @@
+/* Home Page Specific Styles */
+
+.bg-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+}
+
+.bg-image {
+    position: absolute;
+    inset: 0;
+    background-image: url('../images/index.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.bg-filter {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.hero-content {
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 5rem 1rem;
+    color: white;
+}
+
+.hero-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+.hero-subtitle {
+    font-size: 1.5rem;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+}
+
+.cta-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+}
+
+/* Add more spacing on larger screens */
+@media (min-width: 768px) {
+    .hero-content {
+        padding: 8rem 1rem;
+    }
+
+    .hero-title {
+        font-size: 4rem;
+    }
+
+    .hero-subtitle {
+        font-size: 1.75rem;
+    }
+}
+
+/* Make the navbar transparent on home page */
+.container > .navbar {
+    background-color: transparent;
+    box-shadow: none;
+    position: relative;
+    z-index: 10;
+}
+
+.container > .navbar .navbar-logo a,
+.container > .navbar .nav-link {
+    color: white;
+}
+
+.container > .navbar .nav-link:hover,
+.container > .navbar .nav-link.active {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Footer styling overrides for home page */
+.container > .footer {
+    background-color: transparent;
+    box-shadow: none;
+    position: relative;
+    z-index: 10;
+}
+
+.container > .footer .footer-links a {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.container > .footer .footer-links a:hover {
+    color: white;
+}
+
+.container > .footer .footer-copyright {
+    color: rgba(255, 255, 255, 0.7);
+} 

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>社区 - FigArt AI</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/community.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation Bar -->
+        <header class="navbar">
+            <div class="navbar-logo">
+                <a href="index.html">FigArt AI</a>
+            </div>
+            <nav class="navbar-links">
+                <a href="community.html" class="nav-link active">社区</a>
+                <a href="tutorial.html" class="nav-link">教程</a>
+                <div class="auth-links" id="authLinks">
+                    <!-- Will be populated by JavaScript based on auth status -->
+                </div>
+            </nav>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="community-header">
+                <h1>社区作品</h1>
+                <div class="community-controls">
+                    <div class="sort-control">
+                        <button id="sortDropdownBtn" class="btn btn-outline">
+                            <span id="currentSort">最新作品</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
+                            </svg>
+                        </button>
+                        <div id="sortDropdown" class="dropdown-menu hidden">
+                            <a href="#" data-sort="recent" class="dropdown-item">最新作品</a>
+                            <a href="#" data-sort="likes" class="dropdown-item">热门作品</a>
+                        </div>
+                    </div>
+                    <button id="uploadBtn" class="btn btn-primary">上传作品</button>
+                </div>
+            </div>
+
+            <!-- Upload Modal -->
+            <div id="uploadModal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>上传作品</h2>
+                        <button class="close-btn">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="file-input-container">
+                                <label for="photoUpload" class="file-input-label">
+                                    <div class="upload-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" viewBox="0 0 16 16">
+                                            <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                                            <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="upload-text">点击选择图片或拖放到这里</div>
+                                    <div id="selectedFileName" class="selected-file-name"></div>
+                                </label>
+                                <input type="file" id="photoUpload" name="file" accept="image/*" class="file-input" />
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary" id="submitUpload" disabled>上传</button>
+                                <button type="button" class="btn btn-secondary cancel-upload">取消</button>
+                            </div>
+                        </form>
+                        <div id="uploadProgress" class="progress-container hidden">
+                            <div class="progress-bar"></div>
+                            <div class="progress-text">上传中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New Posts Alert -->
+            <div id="newPostsAlert" class="new-posts-alert hidden">
+                <span id="newPostsCount"></span>
+                <div class="alert-actions">
+                    <button id="refreshPostsBtn" class="btn btn-small">刷新</button>
+                    <button id="dismissAlertBtn" class="btn btn-small btn-outline">忽略</button>
+                </div>
+            </div>
+
+            <!-- Posts Grid -->
+            <div id="postsGrid" class="posts-grid">
+                <div id="loadingIndicator" class="loading-indicator">
+                    <div class="spinner"></div>
+                    <p>加载中...</p>
+                </div>
+                <!-- Posts will be inserted here by JavaScript -->
+            </div>
+
+            <!-- Pagination -->
+            <div id="pagination" class="pagination hidden">
+                <button id="prevPageBtn" class="pagination-btn" disabled>&laquo; 上一页</button>
+                <div id="paginationNumbers" class="pagination-numbers">
+                    <!-- Page numbers will be inserted here by JavaScript -->
+                </div>
+                <button id="nextPageBtn" class="pagination-btn" disabled>下一页 &raquo;</button>
+            </div>
+
+            <!-- No Posts Message -->
+            <div id="noPostsMessage" class="no-posts-message hidden">
+                <p>暂无作品。成为第一个分享作品的人吧！</p>
+                <button id="noPostsUploadBtn" class="btn btn-primary">上传作品</button>
+            </div>
+        </main>
+
+        <!-- Post Detail Modal -->
+        <div id="postDetailModal" class="modal hidden">
+            <div class="modal-content post-detail-content">
+                <div class="modal-header">
+                    <h2>作品详情</h2>
+                    <button class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body post-detail-body">
+                    <div class="post-image-container">
+                        <img id="postDetailImage" src="" alt="Post image" />
+                    </div>
+                    <div class="post-info">
+                        <div class="post-info-header">
+                            <div class="post-author" id="postAuthor"></div>
+                            <div class="post-date" id="postDate"></div>
+                        </div>
+                        <div class="post-actions">
+                            <button id="likePostBtn" class="btn btn-icon">
+                                <svg class="like-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="m8 2.748-.717-.737C5.6.281 2.514.878 1.4 3.053c-.523 1.023-.641 2.5.314 4.385.92 1.815 2.834 3.989 6.286 6.357 3.452-2.368 5.365-4.542 6.286-6.357.955-1.886.838-3.362.314-4.385C13.486.878 10.4.28 8.717 2.01L8 2.748zM8 15C-7.333 4.868 3.279-3.04 7.824 1.143c.06.055.119.112.176.171a3.12 3.12 0 0 1 .176-.17C12.72-3.042 23.333 4.867 8 15z"/>
+                                </svg>
+                                <span id="likeCount">0</span>
+                            </button>
+                            <button id="deletePostBtn" class="btn btn-icon btn-danger hidden">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                                    <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                                </svg>
+                                <span>删除</span>
+                            </button>
+                        </div>
+                        <div class="comments-section">
+                            <h3>评论</h3>
+                            <div id="commentsContainer" class="comments-container">
+                                <!-- Comments will be inserted here by JavaScript -->
+                            </div>
+                            <form id="commentForm" class="comment-form">
+                                <input type="text" id="commentInput" name="comment" placeholder="添加评论..." maxlength="60" required />
+                                <button type="submit" class="btn btn-primary">发送</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteConfirmModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>确认删除</h2>
+                    <button class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>确定要删除这张作品吗？此操作无法撤销。</p>
+                    <div class="form-actions">
+                        <button id="confirmDeleteBtn" class="btn btn-danger">删除</button>
+                        <button id="cancelDeleteBtn" class="btn btn-secondary">取消</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="privacy.html">隐私政策</a>
+                    <a href="terms.html">使用条款</a>
+                </div>
+                <div class="footer-copyright">
+                    &copy; 2024 FigArt AI. All rights reserved.
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/community.js"></script>
+</body>
+</html> 

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教程 - FigArt AI</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .tutorial-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        .tutorial-header {
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .tutorial-header h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .tutorial-header p {
+            color: var(--text-muted);
+            font-size: 1.125rem;
+        }
+        
+        .tutorial-section {
+            margin-bottom: 3rem;
+            padding: 1.5rem;
+            background-color: var(--card-background);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+        
+        .tutorial-section h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+        
+        .tutorial-section p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+        
+        .tutorial-section ul {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+        }
+        
+        .tutorial-section li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .tutorial-image {
+            width: 100%;
+            border-radius: var(--radius);
+            margin: 1.5rem 0;
+            box-shadow: var(--shadow);
+        }
+        
+        .tip-box {
+            background-color: #e0f2fe;
+            border-left: 4px solid #0ea5e9;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-radius: 0 var(--radius) var(--radius) 0;
+        }
+        
+        .tip-box h3 {
+            color: #0369a1;
+            font-size: 1.125rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .tip-box p {
+            margin-bottom: 0;
+            color: #0c4a6e;
+        }
+        
+        @media (min-width: 768px) {
+            .tutorial-container {
+                padding: 3rem 2rem;
+            }
+            
+            .tutorial-header h1 {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation Bar -->
+        <header class="navbar">
+            <div class="navbar-logo">
+                <a href="index.html">FigArt AI</a>
+            </div>
+            <nav class="navbar-links">
+                <a href="community.html" class="nav-link">社区</a>
+                <a href="tutorial.html" class="nav-link active">教程</a>
+                <div class="auth-links" id="authLinks">
+                    <!-- Will be populated by JavaScript based on auth status -->
+                </div>
+            </nav>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="tutorial-container">
+                <div class="tutorial-header">
+                    <h1>摄影小白入门指南</h1>
+                    <p>从零开始学习拍出好看的照片</p>
+                </div>
+                
+                <div class="tutorial-section">
+                    <h2>1. 了解你的相机</h2>
+                    <p>无论你使用的是专业相机还是手机，了解设备的基本功能都是拍好照片的第一步。</p>
+                    <ul>
+                        <li><strong>光圈（Aperture）</strong>：控制进光量和景深，用f值表示（如f/2.8）。数值越小，光圈越大，进光量越多，景深越浅（背景虚化效果越明显）。</li>
+                        <li><strong>快门速度（Shutter Speed）</strong>：控制感光时间，如1/100秒。速度越快，越能冻结动作；速度越慢，可以拍出动态模糊效果。</li>
+                        <li><strong>ISO感光度</strong>：控制传感器对光线的敏感程度。数值越高，在暗光环境下越亮，但噪点也会增加。</li>
+                    </ul>
+                    
+                    <div class="tip-box">
+                        <h3>小贴士</h3>
+                        <p>大多数手机相机应用都有专业模式，可以手动调整这些参数。不要害怕尝试！</p>
+                    </div>
+                </div>
+                
+                <div class="tutorial-section">
+                    <h2>2. 构图基础</h2>
+                    <p>好的构图能让普通的场景变得引人注目。以下是几个简单易用的构图技巧：</p>
+                    <ul>
+                        <li><strong>三分法则</strong>：将画面平均分成九宫格（大多数相机都有网格功能），将主体放在线条的交叉点上。</li>
+                        <li><strong>引导线</strong>：利用自然存在的线条（如道路、栏杆）引导观众的视线到照片的主体。</li>
+                        <li><strong>框架</strong>：使用门窗、树枝等自然元素为主体创造"框架"，增加层次感。</li>
+                        <li><strong>对称与平衡</strong>：寻找对称的场景，或者在画面中创造视觉平衡。</li>
+                    </ul>
+                    <p>记住，规则是用来打破的。掌握基础后，你可以尝试更有创意的构图。</p>
+                </div>
+                
+                <div class="tutorial-section">
+                    <h2>3. 光线运用</h2>
+                    <p>摄影的本质是捕捉光线。理解光线的特性将极大提升你的照片质量。</p>
+                    <ul>
+                        <li><strong>黄金时刻</strong>：日出后和日落前的1小时左右，光线柔和温暖，是户外摄影的最佳时间。</li>
+                        <li><strong>蓝色时刻</strong>：日落后的短暂时间，天空呈现深蓝色，适合城市和建筑摄影。</li>
+                        <li><strong>侧光</strong>：从侧面照射的光线能创造立体感和纹理。</li>
+                        <li><strong>逆光</strong>：主体背对光源，可以创造剪影效果或光晕效果（需要适当曝光）。</li>
+                    </ul>
+                    
+                    <div class="tip-box">
+                        <h3>小贴士</h3>
+                        <p>阴天其实是拍摄人像的好天气！云层会散射阳光，形成柔和的光线，减少强烈的阴影。</p>
+                    </div>
+                </div>
+                
+                <div class="tutorial-section">
+                    <h2>4. 后期处理</h2>
+                    <p>现代摄影的一个重要环节是后期处理，它可以帮助你实现创意愿景。</p>
+                    <ul>
+                        <li><strong>基础调整</strong>：曝光、对比度、高光、阴影、色温等基本参数的调整。</li>
+                        <li><strong>裁剪与校正</strong>：优化构图，校正水平线。</li>
+                        <li><strong>色彩调整</strong>：饱和度、色调、分离色调等，创造特定的氛围。</li>
+                    </ul>
+                    <p>推荐的手机应用：Snapseed、Lightroom Mobile、VSCO。</p>
+                    <p>记住，后期是为了增强照片，而不是拯救糟糕的照片。好的原始素材是关键。</p>
+                </div>
+                
+                <div class="tutorial-section">
+                    <h2>5. 实践与分享</h2>
+                    <p>摄影是一门需要不断实践的艺术。以下是一些建议：</p>
+                    <ul>
+                        <li>每天拍摄，培养"摄影眼"。</li>
+                        <li>设定主题挑战自己，如"一周一色"、"街头人像"等。</li>
+                        <li>学习分析你喜欢的摄影作品，理解为什么它们吸引你。</li>
+                        <li>加入摄影社区，获取反馈和灵感。</li>
+                        <li>不要害怕犯错和尝试新技巧。</li>
+                    </ul>
+                    <p>最重要的是，享受摄影的过程，用你的视角记录和分享这个世界的美丽。</p>
+                    
+                    <div class="tip-box">
+                        <h3>小贴士</h3>
+                        <p>在我们的社区分享你的作品，获取反馈和建议，与其他摄影爱好者交流！</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="privacy.html">隐私政策</a>
+                    <a href="terms.html">使用条款</a>
+                </div>
+                <div class="footer-copyright">
+                    &copy; 2024 FigArt AI. All rights reserved.
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="js/auth.js"></script>
+</body>
+</html> 

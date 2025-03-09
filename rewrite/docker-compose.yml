@@ -1,0 +1,33 @@
+version: '3'
+
+services:
+  # Frontend service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - figartai-network
+
+  # Backend service
+  backend:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    environment:
+      - DB=sqlite:///db.sqlite3
+      - SECRET_KEY=${SECRET_KEY:-your_secret_key_here}
+      - HOSTS=*
+    volumes:
+      - ./api/uploads:/app/uploads
+      - ./api/db.sqlite3:/app/db.sqlite3
+    networks:
+      - figartai-network
+
+networks:
+  figartai-network:
+    driver: bridge 
