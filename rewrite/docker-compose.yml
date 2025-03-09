@@ -22,6 +22,10 @@ services:
       - DB=sqlite:///db.sqlite3
       - SECRET_KEY=${SECRET_KEY:-your_secret_key_here}
       - HOSTS=*
+      # uWSGI specific environment variables
+      - UWSGI_PROCESSES=4
+      - UWSGI_THREADS=2
+      - UWSGI_HARAKIRI=60
     volumes:
       - ./api/uploads:/app/uploads
       - ./api/db.sqlite3:/app/db.sqlite3

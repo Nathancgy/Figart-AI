@@ -1,15 +1,19 @@
-fastapi==0.110.0
-uvicorn[standard]==0.27.1
-uvloop==0.19.0
+fastapi>=0.95.0
+uvicorn>=0.21.1
+python-multipart>=0.0.6
+sqlalchemy>=2.0.9
+pyjwt>=2.6.0
+# Add uWSGI for deployment
+uwsgi>=2.0.20
+# Keep other dependencies as needed
+python-dateutil>=2.8.2
 pydantic==2.6.1
 pydantic-extra-types==2.3.0
 pydantic-settings==2.2.1
-sqlalchemy==2.0.27
 alembic==1.13.1
 asyncpg==0.29.0
 aiosqlite==0.19.0
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-python-multipart==0.0.9
 email-validator==2.1.0.post1
 python-dotenv==1.0.0 

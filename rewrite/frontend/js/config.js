@@ -2,7 +2,7 @@
  * Configuration for the FigArt AI frontend
  */
 
-// API base URL - update this to match your deployment
+// API base URL - configured to work with Nginx reverse proxy to uWSGI
 const API_BASE_URL = '/api';
 
 // Function to get the full URL for a photo
